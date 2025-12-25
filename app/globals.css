@@ -1,0 +1,287 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Steel + Lime Accent Theme (Palette F)
+ *
+ * Primary: #1F2937 (Steel gray)
+ * Accent: #A3E635 (Lime green)
+ * See /docs/theme.md for usage guide
+ */
+
+@layer base {
+  :root {
+    /* Background & Surface */
+    --background: 210 40% 98%;           /* #F8FAFC */
+    --foreground: 222 47% 11%;           /* #0F172A */
+
+    /* Card & Popover */
+    --card: 0 0% 100%;                   /* #FFFFFF */
+    --card-foreground: 222 47% 11%;      /* #0F172A */
+    --popover: 0 0% 100%;                /* #FFFFFF */
+    --popover-foreground: 222 47% 11%;   /* #0F172A */
+
+    /* Primary (Steel) */
+    --primary: 220 26% 17%;              /* #1F2937 */
+    --primary-foreground: 210 40% 98%;   /* #F8FAFC */
+
+    /* Secondary */
+    --secondary: 214 32% 91%;            /* #E2E8F0 */
+    --secondary-foreground: 222 47% 11%; /* #0F172A */
+
+    /* Muted */
+    --muted: 210 40% 96%;                /* Slightly tinted from surface */
+    --muted-foreground: 215 16% 47%;     /* #94A3B8 adjusted */
+
+    /* Accent (Lime) */
+    --accent: 82 77% 55%;                /* #A3E635 */
+    --accent-foreground: 222 47% 11%;    /* #0F172A - dark text on lime */
+    --accent-soft: 81 85% 89%;           /* #ECFCCB */
+
+    /* Destructive */
+    --destructive: 0 84% 60%;            /* #EF4444 */
+    --destructive-foreground: 0 0% 100%; /* White */
+
+    /* Success */
+    --success: 142 71% 45%;              /* #22C55E */
+    --success-foreground: 0 0% 100%;     /* White */
+
+    /* Warning */
+    --warning: 38 92% 50%;               /* #F59E0B */
+    --warning-foreground: 222 47% 11%;   /* Dark text */
+
+    /* Border & Input */
+    --border: 214 32% 91%;               /* #E2E8F0 */
+    --input: 214 32% 91%;                /* #E2E8F0 */
+
+    /* Ring (Focus) - Lime accent */
+    --ring: 82 77% 55%;                  /* #A3E635 */
+
+    /* Radius */
+    --radius: 0.5rem;
+
+    /* Chart colors */
+    --chart-1: 142 71% 45%;              /* Success green */
+    --chart-2: 38 92% 50%;               /* Warning amber */
+    --chart-3: 0 84% 60%;                /* Danger red */
+    --chart-4: 82 77% 55%;               /* Accent lime */
+    --chart-5: 215 16% 47%;              /* Muted */
+  }
+
+  .dark {
+    /* Background & Surface */
+    --background: 218 55% 8%;            /* #0B1220 */
+    --foreground: 220 14% 91%;           /* #E5E7EB */
+
+    /* Card & Popover */
+    --card: 222 47% 11%;                 /* #111827 */
+    --card-foreground: 220 14% 91%;      /* #E5E7EB */
+    --popover: 222 47% 11%;              /* #111827 */
+    --popover-foreground: 220 14% 91%;   /* #E5E7EB */
+
+    /* Primary (inverted for dark) */
+    --primary: 210 40% 98%;              /* #F8FAFC - light on dark */
+    --primary-foreground: 222 47% 11%;   /* #111827 */
+
+    /* Secondary */
+    --secondary: 213 27% 21%;            /* #263244 */
+    --secondary-foreground: 220 14% 91%; /* #E5E7EB */
+
+    /* Muted */
+    --muted: 217 33% 17%;                /* Derived from surface */
+    --muted-foreground: 215 16% 65%;     /* #94A3B8 */
+
+    /* Accent (Lime) - same in both modes */
+    --accent: 82 77% 55%;                /* #A3E635 */
+    --accent-foreground: 222 47% 11%;    /* #0F172A */
+    --accent-soft: 81 40% 20%;           /* Darker soft lime for dark mode */
+
+    /* Destructive */
+    --destructive: 0 63% 31%;            /* Darker red for dark mode */
+    --destructive-foreground: 0 0% 100%;
+
+    /* Success */
+    --success: 142 71% 45%;              /* #22C55E */
+    --success-foreground: 0 0% 100%;
+
+    /* Warning */
+    --warning: 38 92% 50%;               /* #F59E0B */
+    --warning-foreground: 222 47% 11%;
+
+    /* Border & Input */
+    --border: 213 27% 21%;               /* #263244 */
+    --input: 213 27% 21%;                /* #263244 */
+
+    /* Ring (Focus) - Lime accent */
+    --ring: 82 77% 55%;                  /* #A3E635 */
+
+    /* Chart colors - adjusted for dark mode */
+    --chart-1: 142 71% 45%;
+    --chart-2: 38 92% 50%;
+    --chart-3: 0 84% 60%;
+    --chart-4: 82 77% 55%;
+    --chart-5: 215 16% 65%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+  }
+
+  /* Focus visible styles with lime accent */
+  *:focus-visible {
+    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+  }
+}
+
+/* React Flow styles */
+.react-flow__node {
+  font-size: 12px;
+}
+
+.react-flow__handle {
+  width: 8px;
+  height: 8px;
+  background-color: hsl(var(--border));
+  border: 2px solid hsl(var(--card));
+}
+
+.react-flow__handle:hover {
+  background-color: hsl(var(--accent));
+}
+
+.react-flow__edge-path {
+  stroke: hsl(var(--border));
+  stroke-width: 2;
+}
+
+.react-flow__edge.selected .react-flow__edge-path {
+  stroke: hsl(var(--accent));
+}
+
+.react-flow__controls {
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+}
+
+.react-flow__controls-button {
+  background: hsl(var(--card));
+  border-bottom: 1px solid hsl(var(--border));
+  fill: hsl(var(--foreground));
+}
+
+.react-flow__controls-button:hover {
+  background: hsl(var(--muted));
+}
+
+.react-flow__minimap {
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+}
+
+/* Custom scrollbar */
+@layer utilities {
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--muted-foreground) / 0.2) transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    @apply bg-muted-foreground/20 rounded-full;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    @apply bg-muted-foreground/40;
+  }
+}
+
+/* Canvas Node Custom Styles */
+@layer components {
+  /* Default node */
+  .fta-node {
+    @apply bg-card border border-border rounded-lg shadow-sm;
+    @apply transition-all duration-200;
+  }
+
+  /* Selected node - lime accent */
+  .fta-node.selected {
+    @apply border-2;
+    border-color: hsl(var(--accent));
+    box-shadow: 0 0 0 3px hsl(var(--accent) / 0.2);
+  }
+
+  /* Judgment states */
+  .fta-node.judgment-1 {
+    border-left: 4px solid hsl(var(--success));
+  }
+
+  .fta-node.judgment-2 {
+    border-left: 4px dashed hsl(var(--warning));
+  }
+
+  .fta-node.judgment-3 {
+    @apply opacity-60;
+    border-left: 4px solid hsl(var(--muted-foreground));
+  }
+
+  .fta-node.judgment-4 {
+    border-left: 4px solid hsl(var(--destructive));
+  }
+
+  /* Main cause badge */
+  .main-cause-badge {
+    background-color: hsl(var(--accent-soft));
+    color: hsl(var(--accent-foreground));
+    border: 1px solid hsl(var(--accent));
+  }
+
+  /* AP (Action Priority) indicators */
+  .ap-high {
+    @apply bg-destructive text-destructive-foreground;
+  }
+
+  .ap-medium {
+    background-color: hsl(var(--warning));
+    color: hsl(var(--warning-foreground));
+  }
+
+  .ap-low {
+    @apply bg-muted text-muted-foreground;
+  }
+
+  /* Status badges */
+  .status-success {
+    background-color: hsl(var(--success) / 0.15);
+    color: hsl(var(--success));
+    border: 1px solid hsl(var(--success) / 0.3);
+  }
+
+  .status-warning {
+    background-color: hsl(var(--warning) / 0.15);
+    color: hsl(var(--warning));
+    border: 1px solid hsl(var(--warning) / 0.3);
+  }
+
+  .status-danger {
+    background-color: hsl(var(--destructive) / 0.15);
+    color: hsl(var(--destructive));
+    border: 1px solid hsl(var(--destructive) / 0.3);
+  }
+}
