@@ -1,7 +1,7 @@
 # Fault Tree Studio - Implementation Tasks
 
 **Last Updated:** 2025-12-25
-**Project Status:** Phase 6 PARTIAL - Core Polish Complete (Error Handling, Toast, Skeletons, Excel Import)
+**Project Status:** Phase 6 PARTIAL - Core Polish Complete + Branding & UX Improvements
 
 ---
 
@@ -451,6 +451,12 @@
 | 2024-12-25 | Loading Skeletons | P5 | StatCard, Table, AnalysisCard skeletons |
 | 2024-12-25 | Excel Import | P5 | ImportDialog with ExcelJS parsing |
 | 2024-12-25 | Import API Route | P5 | /api/import with node chain creation |
+| 2025-12-25 | FTA Studio Branding | P5 | Logo on login, sidebar, admin, analysis header |
+| 2025-12-25 | Horizontal Tree Layout | P2 | Changed from vertical to left-to-right layout |
+| 2025-12-25 | Smart Node Positioning | P2 | Auto-position new nodes horizontally with spacing |
+| 2025-12-25 | Table Row Grouping | P2 | Rowspan merging for parent-child hierarchy |
+| 2025-12-25 | Hydration Warning Fix | P5 | suppressHydrationWarning on body tag |
+| 2025-12-25 | GitHub Repository | Setup | Created and pushed to XLCSPD/fault-tree-analysis-studio |
 
 ---
 
@@ -518,3 +524,7 @@ https://supabase.com/dashboard/project/urmhiusqhlsjypyrqpvq
 - Excel Import: `lib/import/xlsx-import.ts`
 - Import Dialog: `components/import/import-dialog.tsx`
 - Import API: `app/api/import/route.ts`
+- Logo Files: `public/fta-studio-logo.png`, `public/fta-studio-icon.png`
+
+**GitHub Repository:**
+https://github.com/XLCSPD/fault-tree-analysis-studio
