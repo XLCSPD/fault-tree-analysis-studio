@@ -61,7 +61,7 @@ const FaultTreeNode = memo(({ data, selected, id }: NodeProps<FaultTreeNodeType>
     >
       <Handle
         type="target"
-        position={Position.Top}
+        position={Position.Left}
         className="w-3 h-3 !bg-border !border-2 !border-card"
       />
 
@@ -110,16 +110,16 @@ const FaultTreeNode = memo(({ data, selected, id }: NodeProps<FaultTreeNodeType>
 
       <Handle
         type="source"
-        position={Position.Bottom}
+        position={Position.Right}
         className="w-3 h-3 !bg-border !border-2 !border-card"
       />
 
-      {/* Collapse/Expand button */}
+      {/* Collapse/Expand button - positioned on right for horizontal layout */}
       {hasChildren && (
         <button
           onClick={handleCollapseClick}
           className={cn(
-            'absolute -bottom-3 left-1/2 -translate-x-1/2 w-6 h-6 rounded-full border-2 bg-card flex items-center justify-center hover:bg-muted transition-colors z-10',
+            'absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full border-2 bg-card flex items-center justify-center hover:bg-muted transition-colors z-10',
             data.collapsed ? 'border-accent bg-accent-soft' : 'border-border'
           )}
           title={data.collapsed ? `Expand (${childrenCount} hidden)` : 'Collapse'}
@@ -127,14 +127,14 @@ const FaultTreeNode = memo(({ data, selected, id }: NodeProps<FaultTreeNodeType>
           {data.collapsed ? (
             <ChevronRight className="w-3 h-3 text-accent-foreground" />
           ) : (
-            <ChevronDown className="w-3 h-3 text-muted-foreground" />
+            <ChevronRight className="w-3 h-3 text-muted-foreground" />
           )}
         </button>
       )}
 
       {/* Collapsed indicator badge */}
       {data.collapsed && hasChildren && (
-        <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-xs bg-accent-soft text-accent-foreground border border-accent px-1.5 py-0.5 rounded-full font-medium">
+        <div className="absolute -right-8 top-1/2 -translate-y-1/2 text-xs bg-accent-soft text-accent-foreground border border-accent px-1.5 py-0.5 rounded-full font-medium">
           +{childrenCount}
         </div>
       )}

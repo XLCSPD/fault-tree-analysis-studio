@@ -3,6 +3,7 @@
 import { useEffect } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
+import Image from 'next/image'
 import { useUser } from '@/lib/hooks/use-user'
 import { Users, Scale, Calculator, Settings, UserCog, Loader2, ArrowLeft, History } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -43,14 +44,24 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       {/* Sidebar */}
       <aside className="w-64 border-r bg-background flex flex-col">
         <div className="p-4 border-b">
+          <Link href="/analyses" className="flex items-center gap-3 mb-3">
+            <Image
+              src="/fta-studio-icon.png"
+              alt="FTA Studio"
+              width={32}
+              height={32}
+              className="flex-shrink-0"
+            />
+            <span className="font-semibold text-lg">FTA Studio</span>
+          </Link>
           <Link
             href="/analyses"
-            className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-3"
+            className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-2"
           >
             <ArrowLeft className="h-4 w-4" />
             Back to Analyses
           </Link>
-          <h2 className="font-semibold text-lg">Admin Settings</h2>
+          <h2 className="font-semibold">Admin Settings</h2>
           {organization && (
             <p className="text-sm text-muted-foreground mt-1">{organization.name}</p>
           )}

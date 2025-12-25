@@ -9,6 +9,7 @@ interface LayoutOptions {
   nodeHeight?: number
   rankSep?: number
   nodeSep?: number
+  align?: 'UL' | 'UR' | 'DL' | 'DR'
 }
 
 /**
@@ -26,6 +27,7 @@ export function getLayoutedElements(
     nodeHeight = 80,
     rankSep = 80,
     nodeSep = 50,
+    align = 'UL',
   } = options
 
   const dagreGraph = new dagre.graphlib.Graph()
@@ -37,6 +39,8 @@ export function getLayoutedElements(
     rankdir: direction,
     ranksep: rankSep,
     nodesep: nodeSep,
+    align: align,
+    ranker: 'network-simplex',
   })
 
   // Add nodes to dagre graph

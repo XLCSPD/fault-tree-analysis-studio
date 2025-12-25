@@ -3,6 +3,7 @@
 import { useEffect, useCallback, useState, use, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import NextImage from 'next/image'
 import {
   ReactFlow,
   Background,
@@ -19,7 +20,6 @@ import FaultTreeNode from '@/components/canvas/fault-tree-node'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuLabel } from '@/components/ui/dropdown-menu'
 import { useCanvasStore, type FaultTreeNodeData } from '@/lib/store/canvas-store'
@@ -249,16 +249,42 @@ function FTAStudioContent({ analysisId }: { analysisId: string }) {
     })
   }, [updateNodePosition, pushCommand])
 
-  // Add new node
+  // Add new node with smart positioning for horizontal tree layout
   const handleAddNode = useCallback(async (parentId?: string) => {
-    const position = parentId
-      ? { x: 0, y: 100 } // Will be positioned relative to parent
-      : { x: 400, y: 50 }
+    const HORIZONTAL_SPACING = 300 // Space between parent and child (columns)
+    const VERTICAL_SPACING = 120 // Space between siblings
 
-    // Find a good position
-    if (!parentId && nodes.length > 0) {
+    let position = { x: 100, y: 200 }
+
+    if (parentId) {
+      // Find the parent node
+      const parentNode = nodes.find(n => n.id === parentId)
+      if (parentNode) {
+        // Find existing children of this parent
+        const childEdges = edges.filter(e => e.source === parentId)
+        const childNodes = childEdges
+          .map(e => nodes.find(n => n.id === e.target))
+          .filter(Boolean) as typeof nodes
+
+        // Position to the right of parent
+        position.x = parentNode.position.x + HORIZONTAL_SPACING
+
+        if (childNodes.length > 0) {
+          // Position below existing siblings
+          const maxChildY = Math.max(...childNodes.map(n => n.position.y))
+          position.y = maxChildY + VERTICAL_SPACING
+        } else {
+          // First child - align with parent's Y
+          position.y = parentNode.position.y
+        }
+      }
+    } else if (nodes.length > 0) {
+      // No parent - adding a new root or sibling root
+      // Find rightmost node position and add to the right
+      const maxX = Math.max(...nodes.map(n => n.position.x))
       const maxY = Math.max(...nodes.map(n => n.position.y))
-      position.y = maxY + 150
+      position.x = 100
+      position.y = maxY + VERTICAL_SPACING
     }
 
     const nodeType = parentId ? 'basic_event' : (nodes.length === 0 ? 'top_event' : 'intermediate_event')
@@ -295,7 +321,12 @@ function FTAStudioContent({ analysisId }: { analysisId: string }) {
         target_id: newNode.id,
       })
     }
-  }, [createNode, createEdge, nodes, pushCommand])
+
+    // Select the new node
+    if (newNode) {
+      setSelectedNodeId(newNode.id)
+    }
+  }, [createNode, createEdge, nodes, edges, pushCommand, setSelectedNodeId])
 
   // Delete selected nodes (handles both single and multi-select)
   const handleDeleteNode = useCallback(async () => {
@@ -475,11 +506,12 @@ function FTAStudioContent({ analysisId }: { analysisId: string }) {
     if (nodes.length === 0) return
 
     const { nodes: layoutedNodes } = getLayoutedElements(nodes, edges, {
-      direction: 'TB',
-      nodeWidth: 200,
-      nodeHeight: 80,
-      rankSep: 100,
+      direction: 'LR',
+      nodeWidth: 220,
+      nodeHeight: 100,
+      rankSep: 280,
       nodeSep: 60,
+      align: 'UL',
     })
 
     // Track positions for undo
@@ -633,6 +665,60 @@ function FTAStudioContent({ analysisId }: { analysisId: string }) {
     }
   }
 
+  // Calculate rowspan for merged cells in the table
+  // Returns a map of rowIndex -> colIndex -> { rowSpan: number, isFirst: boolean }
+  const getRowSpanMap = (data: TableRow[]) => {
+    const map: Map<number, Map<number, { rowSpan: number; isFirst: boolean }>> = new Map()
+
+    if (!data || data.length === 0) return map
+
+    // Initialize map for all rows
+    for (let rowIdx = 0; rowIdx < data.length; rowIdx++) {
+      map.set(rowIdx, new Map())
+    }
+
+    // For each column (failure_mode_top and why_1 through why_5)
+    for (let colIdx = 0; colIdx <= 5; colIdx++) {
+      let groupStart = 0
+
+      for (let rowIdx = 0; rowIdx <= data.length; rowIdx++) {
+        const currentValue = rowIdx < data.length ? getColumnValue(data[rowIdx], colIdx) : null
+        const prevValue = rowIdx > 0 ? getColumnValue(data[rowIdx - 1], colIdx) : null
+
+        // Check if we need to also compare parent columns to ensure proper grouping
+        let sameParent = true
+        if (rowIdx > 0 && rowIdx < data.length) {
+          for (let parentCol = 0; parentCol < colIdx; parentCol++) {
+            if (getColumnValue(data[rowIdx], parentCol) !== getColumnValue(data[rowIdx - 1], parentCol)) {
+              sameParent = false
+              break
+            }
+          }
+        }
+
+        // End of group: different value, different parent, or end of data
+        if (rowIdx === data.length || currentValue !== prevValue || !sameParent) {
+          // Set rowSpan for the group
+          const groupSize = rowIdx - groupStart
+          if (groupSize > 0) {
+            // First row in group gets the rowSpan
+            map.get(groupStart)?.set(colIdx, { rowSpan: groupSize, isFirst: true })
+            // Other rows in group are marked as not first (will be skipped)
+            for (let i = groupStart + 1; i < rowIdx; i++) {
+              map.get(i)?.set(colIdx, { rowSpan: 0, isFirst: false })
+            }
+          }
+          groupStart = rowIdx
+        }
+      }
+    }
+
+    return map
+  }
+
+  // Compute rowspan map when tableData changes
+  const rowSpanMap = tableData ? getRowSpanMap(tableData) : new Map()
+
   // Get selected node data
   const selectedNode = nodes.find(n => n.id === selectedNodeId)
 
@@ -673,7 +759,13 @@ function FTAStudioContent({ analysisId }: { analysisId: string }) {
       <header className="border-b bg-background px-4 py-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Link href="/analyses">
+            <Link href="/analyses" className="flex items-center gap-2">
+              <NextImage
+                src="/fta-studio-icon.png"
+                alt="FTA Studio"
+                width={28}
+                height={28}
+              />
               <Button variant="ghost" size="sm">
                 <ChevronLeft className="w-4 h-4 mr-1" />
                 Back
@@ -827,9 +919,10 @@ function FTAStudioContent({ analysisId }: { analysisId: string }) {
         </div>
       </header>
 
-      <div className="flex-1 flex overflow-hidden">
-        {/* Canvas */}
-        <div ref={canvasWrapperRef} className="flex-1 relative">
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <div className={`flex overflow-hidden ${showTable ? 'flex-1' : 'flex-1'}`}>
+          {/* Canvas */}
+          <div ref={canvasWrapperRef} className="flex-1 relative">
           <ReactFlow
             nodes={visibleNodes.map(node => ({
               ...node,
@@ -1144,18 +1237,23 @@ function FTAStudioContent({ analysisId }: { analysisId: string }) {
             )}
           </div>
         )}
-      </div>
+        </div>
 
-      {/* Table View Sheet */}
-      <Sheet open={showTable} onOpenChange={setShowTable}>
-        <SheetContent side="bottom" className="h-[60vh]">
-          <SheetHeader className="flex flex-row items-center justify-between">
-            <SheetTitle>Table View</SheetTitle>
-            <p className="text-xs text-muted-foreground">
-              Click any cell to edit. Changes sync to canvas automatically.
-            </p>
-          </SheetHeader>
-          <div className="mt-4 overflow-auto h-[calc(100%-60px)]">
+        {/* Table View - Split Screen */}
+        {showTable && (
+          <div className="h-[40vh] border-t bg-background flex flex-col">
+            <div className="flex items-center justify-between px-4 py-2 border-b bg-muted/30">
+              <h3 className="font-semibold">Table View</h3>
+              <div className="flex items-center gap-4">
+                <p className="text-xs text-muted-foreground">
+                  Click any cell to edit. Changes sync to canvas automatically.
+                </p>
+                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setShowTable(false)}>
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+            <div className="flex-1 overflow-auto">
             {tableLoading ? (
               <div className="flex items-center justify-center h-full">
                 <Loader2 className="w-5 h-5 animate-spin" />
@@ -1187,30 +1285,47 @@ function FTAStudioContent({ analysisId }: { analysisId: string }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {tableData.map((row) => (
+                  {tableData.map((row, rowIndex) => {
+                    const rowSpans = rowSpanMap.get(rowIndex)
+                    return (
                     <tr key={row.row_id} className="border-b">
-                      {/* Failure Mode (position 0) */}
-                      <td className="p-0 border-r">
-                        <EditableCell
-                          value={row.failure_mode_top}
-                          onChange={(newValue) => handleTableLabelUpdate(0, row.failure_mode_top, newValue)}
-                        />
-                      </td>
-                      {/* Why 1-5 (positions 1-5) */}
-                      {[row.why_1, row.why_2, row.why_3, row.why_4, row.why_5].map((why, idx) => (
-                        <td key={idx} className="p-0 border-r">
+                      {/* Failure Mode (position 0) - with rowSpan */}
+                      {rowSpans?.get(0)?.isFirst !== false && (
+                        <td
+                          className="p-0 border-r align-top bg-muted/30"
+                          rowSpan={rowSpans?.get(0)?.rowSpan || 1}
+                        >
                           <EditableCell
-                            value={why}
-                            onChange={(newValue) => {
-                              const oldValue = getColumnValue(row, idx + 1)
-                              if (oldValue) {
-                                handleTableLabelUpdate(idx + 1, oldValue, newValue)
-                              }
-                            }}
-                            disabled={!why && idx > 0 && !getColumnValue(row, idx)}
+                            value={row.failure_mode_top}
+                            onChange={(newValue) => handleTableLabelUpdate(0, row.failure_mode_top, newValue)}
                           />
                         </td>
-                      ))}
+                      )}
+                      {/* Why 1-5 (positions 1-5) - with rowSpan */}
+                      {[row.why_1, row.why_2, row.why_3, row.why_4, row.why_5].map((why, idx) => {
+                        const colIndex = idx + 1
+                        const spanInfo = rowSpans?.get(colIndex)
+                        // Skip this cell if it's not the first in a merged group
+                        if (spanInfo?.isFirst === false) return null
+                        return (
+                          <td
+                            key={idx}
+                            className={`p-0 border-r align-top ${spanInfo?.rowSpan && spanInfo.rowSpan > 1 ? 'bg-muted/20' : ''}`}
+                            rowSpan={spanInfo?.rowSpan || 1}
+                          >
+                            <EditableCell
+                              value={why}
+                              onChange={(newValue) => {
+                                const oldValue = getColumnValue(row, idx + 1)
+                                if (oldValue) {
+                                  handleTableLabelUpdate(idx + 1, oldValue, newValue)
+                                }
+                              }}
+                              disabled={!why && idx > 0 && !getColumnValue(row, idx)}
+                            />
+                          </td>
+                        )
+                      })}
                       {/* Severity */}
                       <td className="p-0 border-r">
                         <EditableCell
@@ -1306,7 +1421,8 @@ function FTAStudioContent({ analysisId }: { analysisId: string }) {
                         {row.remarks || '—'}
                       </td>
                     </tr>
-                  ))}
+                    )
+                  })}
                 </tbody>
               </table>
             ) : (
@@ -1316,9 +1432,10 @@ function FTAStudioContent({ analysisId }: { analysisId: string }) {
                 </p>
               </div>
             )}
+            </div>
           </div>
-        </SheetContent>
-      </Sheet>
+        )}
+      </div>
     </div>
   )
 }

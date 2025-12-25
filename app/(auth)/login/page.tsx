@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -45,10 +46,19 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-muted/50">
       <Card className="w-full max-w-md">
-        <CardHeader>
+        <CardHeader className="text-center">
+          <div className="flex justify-center mb-4">
+            <Image
+              src="/fta-studio-logo.png"
+              alt="FTA Studio"
+              width={240}
+              height={80}
+              priority
+            />
+          </div>
           <CardTitle>Sign In</CardTitle>
           <CardDescription>
-            Enter your email and password to access Fault Tree Studio
+            Enter your email and password to access your account
           </CardDescription>
         </CardHeader>
         <form onSubmit={handleLogin}>

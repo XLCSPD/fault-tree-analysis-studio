@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { useUser } from '@/lib/hooks/use-user'
 import {
@@ -9,7 +10,6 @@ import {
   CheckSquare,
   Settings,
   LogOut,
-  TreeDeciduous,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
@@ -37,9 +37,15 @@ export function Sidebar() {
     <aside className="w-64 border-r bg-background flex flex-col h-screen sticky top-0">
       {/* Logo/Brand */}
       <div className="p-4 border-b">
-        <Link href="/analyses" className="flex items-center gap-2">
-          <TreeDeciduous className="h-6 w-6 text-primary" />
-          <span className="font-semibold text-lg">Fault Tree Studio</span>
+        <Link href="/analyses" className="flex items-center gap-3">
+          <Image
+            src="/fta-studio-icon.png"
+            alt="FTA Studio"
+            width={32}
+            height={32}
+            className="flex-shrink-0"
+          />
+          <span className="font-semibold text-lg">FTA Studio</span>
         </Link>
         {organization && (
           <p className="text-xs text-muted-foreground mt-1 truncate">
