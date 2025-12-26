@@ -17,6 +17,8 @@ Run migrations in order against your Supabase database:
 1. `db/01_schema.sql` - Tables and types
 2. `db/02_rls_policies.sql` - Row Level Security
 3. `db/03_sync_functions.sql` - Tree/table sync functions
+4. `db/04_notifications.sql` - Notification system (optional)
+5. `db/05_action_lifecycle_and_ai.sql` - AI features (optional)
 
 ## Architecture
 
@@ -63,8 +65,16 @@ TypeScript types in `types/database.ts` mirror the schema.
 
 - Supabase clients: `lib/supabase/client.ts` (browser), `lib/supabase/server.ts` (server components)
 - UI components follow shadcn/ui conventions in `components/ui/`
-- Route structure: `app/(auth)/` for login, `app/analyses/[id]/` for the studio view
 - Canvas context: `lib/context/canvas-context.tsx` provides React Flow instance access
+
+### Route Structure
+
+- `app/(auth)/` - Login, register (no sidebar)
+- `app/(dashboard)/` - Dashboard, analyses list, my-actions (with sidebar)
+- `app/analyses/[id]/` - Main studio page (canvas + table views)
+- `app/(admin)/admin/` - User management, scales, AP mapping, audit log
+- `app/api/import/` - XLSX import endpoint
+- `app/api/ai/` - AI suggestions endpoints
 
 ### Undo/Redo System
 
@@ -80,6 +90,12 @@ Located in `lib/export/`:
 - `pdf-export.tsx` - @react-pdf/renderer with cover page and executive summary
 - `image-export.ts` - html-to-image for PNG/SVG canvas capture
 
+### Import Utilities
+
+Located in `lib/import/`:
+- `xlsx-import.ts` - Parse Excel files with column mapping and validation
+- API route at `app/api/import/route.ts` handles file upload and processing
+
 ### Key Files
 
 | Purpose | Path |
@@ -92,6 +108,8 @@ Located in `lib/export/`:
 | Action items | `lib/hooks/use-action-items.ts` |
 | Evidence attachments | `lib/hooks/use-evidence.ts` |
 | Auto-layout (dagre) | `lib/layout/auto-layout.ts` |
+| XLSX import parser | `lib/import/xlsx-import.ts` |
+| Database types | `types/database.ts` |
 
 ## Domain Concepts
 
@@ -99,6 +117,9 @@ Located in `lib/export/`:
 - **RPN**: Severity × Occurrence × Detection (1-10 each, max 1000)
 - **AP (Action Priority)**: Custom mapping rules beyond just RPN value
 - **Evidence Status**: Each cause can be "hypothesis" or "verified"
+- **Node Types**: `top_event` → `intermediate_event` → `basic_event` (leaf)
+- **Gate Types**: `AND` (all children required) / `OR` (any child sufficient)
+- **Judgment Values**: 1-5 scale for cause verification status
 
 ## Environment Variables
 

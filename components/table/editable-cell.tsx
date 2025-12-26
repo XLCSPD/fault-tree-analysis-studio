@@ -6,21 +6,25 @@ import { cn } from '@/lib/utils'
 interface EditableCellProps {
   value: string | number | null
   onChange: (value: string) => void
+  onNavigate?: (direction: 'up' | 'down' | 'left' | 'right') => void
   type?: 'text' | 'number' | 'select'
   options?: { value: string | number; label: string }[]
   placeholder?: string
   className?: string
   disabled?: boolean
+  tabIndex?: number
 }
 
 export function EditableCell({
   value,
   onChange,
+  onNavigate,
   type = 'text',
   options,
   placeholder = '—',
   className,
-  disabled = false
+  disabled = false,
+  tabIndex = 0
 }: EditableCellProps) {
   const [isEditing, setIsEditing] = useState(false)
   const [editValue, setEditValue] = useState(value?.toString() ?? '')
@@ -60,14 +64,34 @@ export function EditableCell({
     if (e.key === 'Enter') {
       e.preventDefault()
       handleBlur()
+      // Move down to next row on Enter
+      onNavigate?.('down')
     } else if (e.key === 'Escape') {
       setEditValue(value?.toString() ?? '')
       setIsEditing(false)
     } else if (e.key === 'Tab') {
-      // Let tab navigate naturally but save first
+      // Save and move right (or left with shift)
+      e.preventDefault()
       handleBlur()
+      onNavigate?.(e.shiftKey ? 'left' : 'right')
+    } else if (e.key === 'ArrowUp' && e.altKey) {
+      e.preventDefault()
+      handleBlur()
+      onNavigate?.('up')
+    } else if (e.key === 'ArrowDown' && e.altKey) {
+      e.preventDefault()
+      handleBlur()
+      onNavigate?.('down')
+    } else if (e.key === 'ArrowLeft' && e.altKey) {
+      e.preventDefault()
+      handleBlur()
+      onNavigate?.('left')
+    } else if (e.key === 'ArrowRight' && e.altKey) {
+      e.preventDefault()
+      handleBlur()
+      onNavigate?.('right')
     }
-  }, [handleBlur, value])
+  }, [handleBlur, value, onNavigate])
 
   const displayValue = value !== null && value !== undefined && value !== '' ? value : placeholder
 
@@ -126,11 +150,39 @@ export function EditableCell({
     )
   }
 
+  const handleCellKeyDown = useCallback((e: React.KeyboardEvent) => {
+    // Enter or Space to start editing
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault()
+      handleClick()
+    }
+    // Arrow key navigation when not editing (with Alt modifier in edit mode)
+    if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      onNavigate?.('up')
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      onNavigate?.('down')
+    } else if (e.key === 'ArrowLeft') {
+      e.preventDefault()
+      onNavigate?.('left')
+    } else if (e.key === 'ArrowRight') {
+      e.preventDefault()
+      onNavigate?.('right')
+    } else if (e.key === 'Tab') {
+      e.preventDefault()
+      onNavigate?.(e.shiftKey ? 'left' : 'right')
+    }
+  }, [handleClick, onNavigate])
+
   return (
     <div
       onClick={handleClick}
+      onKeyDown={handleCellKeyDown}
+      tabIndex={tabIndex}
+      role="gridcell"
       className={cn(
-        'p-2 cursor-pointer hover:bg-muted/80 rounded transition-colors min-h-[36px]',
+        'p-2 cursor-pointer hover:bg-muted/80 rounded transition-colors min-h-[36px] focus:outline-none focus:ring-2 focus:ring-primary focus:ring-inset',
         value === null || value === undefined || value === '' ? 'text-muted-foreground' : '',
         className
       )}

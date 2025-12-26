@@ -13,12 +13,13 @@ interface ExportOptions {
   filename?: string
 }
 
-// Status label mapping
+// Status label mapping for action lifecycle
 const STATUS_LABELS: Record<string, string> = {
-  not_started: 'Not Started',
-  in_progress: 'In Progress',
-  done: 'Done',
-  blocked: 'Blocked',
+  NOT_STARTED: 'Not Started',
+  IN_PROGRESS: 'In Progress',
+  BLOCKED: 'Blocked',
+  DONE: 'Done',
+  VERIFIED: 'Verified',
 }
 
 // Judgment labels
@@ -39,7 +40,7 @@ export async function exportToXlsx({ analysis, tableData, filename }: ExportOpti
     views: [{ state: 'frozen', xSplit: 0, ySplit: 1 }],
   })
 
-  // Define columns
+  // Define columns (updated for new lifecycle model)
   mainSheet.columns = [
     { header: 'Failure Mode (Top)', key: 'failure_mode_top', width: 25 },
     { header: 'Why 1', key: 'why_1', width: 20 },
@@ -59,11 +60,8 @@ export async function exportToXlsx({ analysis, tableData, filename }: ExportOpti
     { header: 'RPN', key: 'rpn', width: 8 },
     { header: 'Investigation Item', key: 'investigation_item', width: 25 },
     { header: 'Person Responsible', key: 'person_responsible_name', width: 18 },
-    { header: 'Schedule', key: 'schedule', width: 12 },
-    { header: 'Week 1', key: 'week_1_status', width: 12 },
-    { header: 'Week 2', key: 'week_2_status', width: 12 },
-    { header: 'Week 3', key: 'week_3_status', width: 12 },
-    { header: 'Week 4', key: 'week_4_status', width: 12 },
+    { header: 'Due Date', key: 'due_date', width: 12 },
+    { header: 'Status', key: 'status', width: 15 },
     { header: 'Investigation Result', key: 'investigation_result', width: 30 },
     { header: 'Judgment', key: 'judgment', width: 20 },
     { header: 'Remarks', key: 'remarks', width: 25 },
@@ -101,11 +99,8 @@ export async function exportToXlsx({ analysis, tableData, filename }: ExportOpti
       rpn: row.rpn || '',
       investigation_item: row.investigation_item || '',
       person_responsible_name: row.person_responsible_name || '',
-      schedule: row.schedule || '',
-      week_1_status: row.week_1_status ? STATUS_LABELS[row.week_1_status] : '',
-      week_2_status: row.week_2_status ? STATUS_LABELS[row.week_2_status] : '',
-      week_3_status: row.week_3_status ? STATUS_LABELS[row.week_3_status] : '',
-      week_4_status: row.week_4_status ? STATUS_LABELS[row.week_4_status] : '',
+      due_date: row.due_date || '',
+      status: row.status ? STATUS_LABELS[row.status] || row.status : '',
       investigation_result: row.investigation_result || '',
       judgment: row.judgment ? JUDGMENT_LABELS[row.judgment] || '' : '',
       remarks: row.remarks || '',
@@ -138,23 +133,20 @@ export async function exportToXlsx({ analysis, tableData, filename }: ExportOpti
       }
     }
 
-    // Color code week status cells
-    const weekColumns = ['week_1_status', 'week_2_status', 'week_3_status', 'week_4_status']
-    const weekStatuses = [row.week_1_status, row.week_2_status, row.week_3_status, row.week_4_status]
-    weekColumns.forEach((col, i) => {
-      const cell = dataRow.getCell(col)
-      const status = weekStatuses[i]
-      if (status === 'done') {
-        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDCFCE7' } }
-        cell.font = { color: { argb: 'FF15803D' } }
-      } else if (status === 'in_progress') {
-        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDBEAFE' } }
-        cell.font = { color: { argb: 'FF1D4ED8' } }
-      } else if (status === 'blocked') {
-        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEE2E2' } }
-        cell.font = { color: { argb: 'FFB91C1C' } }
+    // Color code status cell
+    const statusCell = dataRow.getCell('status')
+    if (row.status) {
+      if (row.status === 'DONE' || row.status === 'VERIFIED') {
+        statusCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDCFCE7' } }
+        statusCell.font = { color: { argb: 'FF15803D' } }
+      } else if (row.status === 'IN_PROGRESS') {
+        statusCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDBEAFE' } }
+        statusCell.font = { color: { argb: 'FF1D4ED8' } }
+      } else if (row.status === 'BLOCKED') {
+        statusCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEE2E2' } }
+        statusCell.font = { color: { argb: 'FFB91C1C' } }
       }
-    })
+    }
   })
 
   // Add borders to all cells
@@ -182,14 +174,20 @@ export async function exportToXlsx({ analysis, tableData, filename }: ExportOpti
 
   const metadataFields = [
     { field: 'Title', value: analysis.title },
-    { field: 'Model', value: analysis.model || '' },
-    { field: 'Application', value: analysis.application || '' },
-    { field: 'Part Name', value: analysis.part_name || '' },
-    { field: 'Analysis Date', value: analysis.analysis_date || '' },
     { field: 'Status', value: analysis.status || '' },
+    { field: 'Analysis Date', value: analysis.analysis_date || '' },
+    // Context fields
+    { field: 'Site / Location', value: analysis.site_name || '' },
+    { field: 'Area / Function', value: analysis.area_function || '' },
+    // Scope fields (new industry-neutral names with fallback to legacy)
+    { field: 'Process / Workflow', value: analysis.process_workflow || analysis.application || '' },
+    { field: 'Asset / System', value: analysis.asset_system || analysis.model || '' },
+    { field: 'Item / Product / Output', value: analysis.item_output || analysis.part_name || '' },
+    // Description
     { field: 'Problem Statement', value: analysis.problem_statement || '' },
     { field: 'Abstract', value: analysis.abstract || '' },
     { field: 'Related Document', value: analysis.related_document || '' },
+    // Timestamps
     { field: 'Created At', value: analysis.created_at ? new Date(analysis.created_at).toLocaleString() : '' },
     { field: 'Updated At', value: analysis.updated_at ? new Date(analysis.updated_at).toLocaleString() : '' },
   ]
@@ -224,13 +222,7 @@ export async function exportToXlsx({ analysis, tableData, filename }: ExportOpti
     const whys = [row.why_9, row.why_8, row.why_7, row.why_6, row.why_5, row.why_4, row.why_3, row.why_2, row.why_1]
     const rootCause = whys.find(w => w) || row.failure_mode_top
 
-    // Determine overall status from week statuses
-    const statuses = [row.week_1_status, row.week_2_status, row.week_3_status, row.week_4_status].filter(Boolean)
-    let overallStatus = 'Not Started'
-    if (statuses.includes('blocked')) overallStatus = 'Blocked'
-    else if (statuses.includes('done') && statuses.every(s => s === 'done')) overallStatus = 'Done'
-    else if (statuses.includes('in_progress') || statuses.includes('done')) overallStatus = 'In Progress'
-
+    const statusLabel = row.status ? STATUS_LABELS[row.status] || row.status : 'Not Started'
     const priority = row.rpn! >= 200 ? 'Critical' : row.rpn! >= 100 ? 'High' : row.rpn! >= 50 ? 'Medium' : 'Low'
 
     const dataRow = riskSheet.addRow({
@@ -242,7 +234,7 @@ export async function exportToXlsx({ analysis, tableData, filename }: ExportOpti
       rpn: row.rpn,
       priority,
       person: row.person_responsible_name || '',
-      status: overallStatus,
+      status: statusLabel,
     })
 
     // Color code priority

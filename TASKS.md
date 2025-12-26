@@ -1,7 +1,7 @@
 # Fault Tree Studio - Implementation Tasks
 
 **Last Updated:** 2025-12-25
-**Project Status:** Phase 6 PARTIAL - Core Polish Complete + Branding & UX Improvements
+**Project Status:** Phase 6 SUBSTANTIAL - Performance, Realtime Collaboration & Notifications
 
 ---
 
@@ -158,7 +158,7 @@
 | Cover page with metadata | `[x]` | Analysis details + status |
 | Executive summary section | `[x]` | RPN breakdown by priority |
 | Full table section | `[x]` | Paginated with all columns |
-| Tree visualization (optional) | `[ ]` | Could embed PNG |
+| Tree visualization (optional) | `[x]` | Embeds canvas PNG capture |
 | Download trigger | `[x]` | Export dropdown menu |
 
 ### 3.3 Export to PNG/SVG
@@ -175,17 +175,17 @@
 | Search input in toolbar | `[x]` | SearchBar component |
 | Search nodes by label | `[x]` | Real-time filtering |
 | Highlight matching nodes | `[x]` | Yellow ring + minimap |
-| Show path from root to found node | `[ ]` | Breadcrumb or highlight |
+| Show path from root to found node | `[x]` | NodeBreadcrumb component in inspector |
 | Navigate to node (pan + zoom) | `[x]` | setCenter with animation |
-| Search in table view | `[ ]` | Filter rows |
+| Search in table view | `[x]` | Real-time row filtering |
 
 ### 3.5 Keyboard Navigation
 | Task | Status | Notes |
 |------|--------|-------|
-| Tab/Enter navigation in table | `[ ]` | Excel-like |
-| Arrow key navigation | `[ ]` | |
+| Tab/Enter navigation in table | `[x]` | Excel-like cell navigation |
+| Arrow key navigation | `[x]` | Alt+Arrow in edit mode |
 | Escape to cancel edit | `[x]` | Clears selection |
-| Ctrl+S to save | `[ ]` | |
+| Ctrl+S to save | `[x]` | Shows toast (autosave active) |
 | Ctrl+Z undo | `[x]` | Command pattern undo |
 | Ctrl+Y redo | `[x]` | Also Ctrl+Shift+Z |
 | Delete key to remove node | `[x]` | Works with multi-select |
@@ -224,7 +224,7 @@
 |------|--------|-------|
 | Implement command pattern | `[x]` | lib/store/history-store.ts |
 | Track node changes | `[x]` | ADD, DELETE, UPDATE, MOVE |
-| Track edge changes | `[ ]` | Edge operations not tracked yet |
+| Track edge changes | `[x]` | ADD_EDGE, DELETE_EDGE with callbacks |
 | Undo stack (limit 50?) | `[x]` | maxHistorySize: 50 |
 | Redo stack | `[x]` | Full redo support |
 | UI indicators | `[x]` | Undo/Redo buttons in toolbar |
@@ -368,10 +368,10 @@
 ### 6.3 Performance Optimization
 | Task | Status | Notes |
 |------|--------|-------|
-| Canvas virtualization (1000+ nodes) | `[ ]` | |
-| Table virtualization | `[ ]` | |
+| Canvas virtualization (1000+ nodes) | `[ ]` | Viewport-aware rendering pending |
+| Table virtualization | `[x]` | VirtualizedTable with @tanstack/react-virtual |
 | Query optimization | `[ ]` | |
-| Bundle size analysis | `[ ]` | |
+| Bundle size analysis | `[x]` | @next/bundle-analyzer in next.config.js |
 | Image optimization | `[ ]` | |
 | Lazy loading routes | `[ ]` | |
 
@@ -385,24 +385,24 @@
 | Create nodes from Why 1-9 chains | `[x]` | Uses create_nodes_from_table_row RPC |
 | Validation & error reporting | `[x]` | Row-level errors with preview |
 
-### 6.5 Real-time Collaboration (Optional)
+### 6.5 Real-time Collaboration
 | Task | Status | Notes |
 |------|--------|-------|
-| Supabase Realtime subscription | `[ ]` | |
-| Live cursor positions | `[ ]` | |
-| Live node updates | `[ ]` | |
-| Presence indicators | `[ ]` | |
-| Conflict resolution | `[ ]` | |
+| Supabase Realtime subscription | `[x]` | use-realtime-sync.ts for nodes/edges/risk_scores |
+| Live cursor positions | `[x]` | collaborator-cursors.tsx with throttled updates |
+| Live node updates | `[x]` | Query invalidation on postgres_changes |
+| Presence indicators | `[x]` | use-presence.ts + presence-avatars.tsx |
+| Conflict resolution | `[x]` | Last-write-wins with toast notification |
 
 ### 6.6 Notifications
 | Task | Status | Notes |
 |------|--------|-------|
-| In-app notification system | `[ ]` | |
-| Notification center UI | `[ ]` | |
-| Mark as read | `[ ]` | |
-| Notify on action assignment | `[ ]` | |
+| In-app notification system | `[x]` | db/04_notifications.sql with RLS |
+| Notification center UI | `[x]` | notification-bell.tsx + notification-center.tsx |
+| Mark as read | `[x]` | Single and bulk mark-as-read hooks |
+| Notify on action assignment | `[ ]` | Hooks ready, trigger pending |
 | Notify on mention (future) | `[ ]` | |
-| Email notifications (optional) | `[ ]` | |
+| Email notifications (optional) | `[-]` | Deferred to in-app only |
 
 ---
 
@@ -457,6 +457,22 @@
 | 2025-12-25 | Table Row Grouping | P2 | Rowspan merging for parent-child hierarchy |
 | 2025-12-25 | Hydration Warning Fix | P5 | suppressHydrationWarning on body tag |
 | 2025-12-25 | GitHub Repository | Setup | Created and pushed to XLCSPD/fault-tree-analysis-studio |
+| 2025-12-25 | Ctrl+S Save Shortcut | P2 | Shows toast confirmation (autosave active) |
+| 2025-12-25 | Table Search/Filter | P2 | Real-time filtering across all text fields |
+| 2025-12-25 | Table Keyboard Navigation | P2 | Tab/Enter/Arrow keys for Excel-like navigation |
+| 2025-12-25 | Node Path Breadcrumb | P2 | Shows path from root in inspector panel |
+| 2025-12-25 | Edge Change Tracking | P2 | Undo/redo for edge add/delete operations |
+| 2025-12-25 | PDF Tree Visualization | P2 | Embeds canvas PNG in PDF export |
+| 2025-12-25 | Table Virtualization | P5 | @tanstack/react-virtual for 1000+ rows |
+| 2025-12-25 | Bundle Analyzer | P5 | @next/bundle-analyzer in next.config.js |
+| 2025-12-25 | Realtime Sync Hook | P5 | use-realtime-sync.ts for live updates |
+| 2025-12-25 | Presence System | P5 | use-presence.ts with cursor tracking |
+| 2025-12-25 | Collaborator Cursors | P5 | Live cursor overlay on canvas |
+| 2025-12-25 | Presence Avatars | P5 | Active collaborator display in header |
+| 2025-12-25 | Notifications Schema | P5 | db/04_notifications.sql with RLS |
+| 2025-12-25 | Notification Hooks | P5 | Full CRUD with realtime subscription |
+| 2025-12-25 | Notification Bell | P5 | Bell icon with unread badge |
+| 2025-12-25 | Notification Center | P5 | Dropdown with notification list |
 
 ---
 
@@ -525,6 +541,18 @@ https://supabase.com/dashboard/project/urmhiusqhlsjypyrqpvq
 - Import Dialog: `components/import/import-dialog.tsx`
 - Import API: `app/api/import/route.ts`
 - Logo Files: `public/fta-studio-logo.png`, `public/fta-studio-icon.png`
+- Node Breadcrumb: `components/canvas/node-breadcrumb.tsx`
+- Node Path Hook: `lib/hooks/use-node-path.ts`
+- Editable Cell: `components/table/editable-cell.tsx`
+- Virtualized Table: `components/table/virtualized-table.tsx`
+- Realtime Sync Hook: `lib/hooks/use-realtime-sync.ts`
+- Presence Hook: `lib/hooks/use-presence.ts`
+- Collaborator Cursors: `components/canvas/collaborator-cursors.tsx`
+- Presence Avatars: `components/ui/presence-avatars.tsx`
+- Notification Hooks: `lib/hooks/use-notifications.ts`
+- Notification Bell: `components/notifications/notification-bell.tsx`
+- Notification Center: `components/notifications/notification-center.tsx`
+- Notifications Schema: `db/04_notifications.sql`
 
 **GitHub Repository:**
 https://github.com/XLCSPD/fault-tree-analysis-studio

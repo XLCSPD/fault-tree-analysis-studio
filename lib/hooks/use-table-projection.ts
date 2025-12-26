@@ -27,11 +27,10 @@ export interface TableRow {
   rpn: number | null
   investigation_item: string | null
   person_responsible_name: string | null
-  schedule: string | null
-  week_1_status: 'not_started' | 'in_progress' | 'done' | 'blocked' | null
-  week_2_status: 'not_started' | 'in_progress' | 'done' | 'blocked' | null
-  week_3_status: 'not_started' | 'in_progress' | 'done' | 'blocked' | null
-  week_4_status: 'not_started' | 'in_progress' | 'done' | 'blocked' | null
+  due_date: string | null
+  status: 'NOT_STARTED' | 'IN_PROGRESS' | 'BLOCKED' | 'DONE' | 'VERIFIED' | null
+  action_count: number | null
+  evidence_count: number | null
   investigation_result: string | null
   judgment: number | null
   remarks: string | null

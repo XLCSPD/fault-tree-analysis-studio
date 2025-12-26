@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useCallback, useState, use, useRef } from 'react'
+import { useEffect, useCallback, useState, use, useRef, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import NextImage from 'next/image'
@@ -24,15 +24,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuLabel } from '@/components/ui/dropdown-menu'
 import { useCanvasStore, type FaultTreeNodeData } from '@/lib/store/canvas-store'
 import { useAnalysis, useUpdateAnalysis } from '@/lib/hooks/use-analysis'
-import { useNodes, useEdges, useCreateNode, useUpdateNode, useDeleteNode, useDeleteNodes, useCreateEdge, useUpdateNodePosition, useBatchUpdatePositions } from '@/lib/hooks/use-nodes'
+import { useNodes, useEdges, useCreateNode, useUpdateNode, useDeleteNode, useDeleteNodes, useCreateEdge, useDeleteEdge, useUpdateNodePosition, useBatchUpdatePositions } from '@/lib/hooks/use-nodes'
 import { useTableProjection, useCreateFromTableRow, useUpdateFromTable, type TableRow } from '@/lib/hooks/use-table-projection'
 import { useRiskScore, useUpsertRiskScore } from '@/lib/hooks/use-risk-scores'
 import { useUser } from '@/lib/hooks/use-user'
 import { exportToXlsx } from '@/lib/export/xlsx-export'
 import { exportToPdf } from '@/lib/export/pdf-export'
-import { exportToPng, exportToSvg } from '@/lib/export/image-export'
+import { exportToPng, exportToSvg, captureCanvasAsDataUrl } from '@/lib/export/image-export'
 import { getLayoutedElements } from '@/lib/layout/auto-layout'
 import { SearchBar } from '@/components/canvas/search-bar'
+import { NodeBreadcrumb } from '@/components/canvas/node-breadcrumb'
 import { ContextMenu } from '@/components/canvas/context-menu'
 import { CanvasProvider } from '@/lib/context/canvas-context'
 import { useHistoryStore, createNodeCommand, createEdgeCommand, createBatchMoveCommand } from '@/lib/store/history-store'
@@ -58,12 +59,20 @@ import {
   Redo2,
   Pencil,
   Check,
-  X
+  X,
+  Search
 } from 'lucide-react'
 import { EditableCell } from '@/components/table/editable-cell'
+import { VirtualizedTable } from '@/components/table/virtualized-table'
 import { ActionItemsPanel } from '@/components/inspector/action-items-panel'
 import { MetadataPanel } from '@/components/inspector/metadata-panel'
 import { EvidencePanel } from '@/components/inspector/evidence-panel'
+import { AIAssistPanel } from '@/components/inspector/ai-assist-panel'
+import { useToast } from '@/lib/hooks/use-toast'
+import { useRealtimeSync } from '@/lib/hooks/use-realtime-sync'
+import { usePresence } from '@/lib/hooks/use-presence'
+import { CollaboratorCursors } from '@/components/canvas/collaborator-cursors'
+import { PresenceAvatars } from '@/components/ui/presence-avatars'
 import type { Node } from '@xyflow/react'
 
 const nodeTypes = {
@@ -76,7 +85,7 @@ interface PageProps {
 
 function FTAStudioContent({ analysisId }: { analysisId: string }) {
   const router = useRouter()
-  const [showTable, setShowTable] = useState(false)
+  const [showTable, setShowTable] = useState(true)
   const [showInspector, setShowInspector] = useState(true)
   const [showMetadata, setShowMetadata] = useState(false)
   const [editingCell, setEditingCell] = useState<{ rowIndex: number; column: string } | null>(null)
@@ -85,12 +94,21 @@ function FTAStudioContent({ analysisId }: { analysisId: string }) {
   const [isExporting, setIsExporting] = useState(false)
   const [isEditingTitle, setIsEditingTitle] = useState(false)
   const [editingTitle, setEditingTitle] = useState('')
+  const [tableSearchQuery, setTableSearchQuery] = useState('')
   const canvasWrapperRef = useRef<HTMLDivElement>(null)
   const titleInputRef = useRef<HTMLInputElement>(null)
   const dragStartPositions = useRef<Map<string, { x: number; y: number }>>(new Map())
 
   // User and organization info
   const { organization } = useUser()
+  const { toast } = useToast()
+
+  // Real-time collaboration
+  useRealtimeSync({ analysisId, enabled: true })
+  const { collaborators, updateCursor, updateSelectedNode, isConnected } = usePresence({
+    analysisId,
+    enabled: true,
+  })
 
   // Canvas store
   const {
@@ -127,6 +145,26 @@ function FTAStudioContent({ analysisId }: { analysisId: string }) {
   const { data: dbEdges, isLoading: edgesLoading } = useEdges(analysisId)
   const { data: tableData, isLoading: tableLoading } = useTableProjection(analysisId)
 
+  // Filtered table data based on search query
+  const filteredTableData = useMemo(() => {
+    if (!tableData || !tableSearchQuery.trim()) return tableData
+    const query = tableSearchQuery.toLowerCase()
+    return tableData.filter(row => {
+      // Search across all text fields
+      const searchableFields = [
+        row.failure_mode_top,
+        row.why_1, row.why_2, row.why_3, row.why_4, row.why_5,
+        row.why_6, row.why_7, row.why_8, row.why_9,
+        row.units, row.specification,
+        row.investigation_item, row.investigation_result,
+        row.person_responsible_name, row.remarks
+      ]
+      return searchableFields.some(field =>
+        field?.toLowerCase().includes(query)
+      )
+    })
+  }, [tableData, tableSearchQuery])
+
   // Selected node risk score
   const { data: selectedRiskScore } = useRiskScore(selectedNodeId)
 
@@ -136,6 +174,7 @@ function FTAStudioContent({ analysisId }: { analysisId: string }) {
   const updateNodeDb = useUpdateNode(analysisId)
   const deleteNodeDb = useDeleteNode(analysisId)
   const createEdge = useCreateEdge(analysisId)
+  const deleteEdgeDb = useDeleteEdge(analysisId)
   const updateNodePosition = useUpdateNodePosition(analysisId)
   const upsertRiskScore = useUpsertRiskScore(analysisId)
   const createFromTableRow = useCreateFromTableRow(analysisId)
@@ -178,6 +217,15 @@ function FTAStudioContent({ analysisId }: { analysisId: string }) {
     onBatchMove: async (moves) => {
       await batchUpdatePositions.mutateAsync(moves.map(m => ({ nodeId: m.nodeId, position: m.position })))
     },
+    onAddEdge: async (edge) => {
+      await createEdge.mutateAsync({
+        source_id: edge.source,
+        target_id: edge.target,
+      })
+    },
+    onDeleteEdge: async (edgeId) => {
+      await deleteEdgeDb.mutateAsync(edgeId)
+    },
   })
 
   // ReactFlow instance
@@ -186,6 +234,11 @@ function FTAStudioContent({ analysisId }: { analysisId: string }) {
   // Track selected node in a ref for the sync effect
   const selectedNodeIdRef = useRef(selectedNodeId)
   selectedNodeIdRef.current = selectedNodeId
+
+  // Update presence when selected node changes
+  useEffect(() => {
+    updateSelectedNode(selectedNodeId)
+  }, [selectedNodeId, updateSelectedNode])
 
   // Initialize and sync canvas from database
   // Re-sync whenever database data changes
@@ -316,10 +369,19 @@ function FTAStudioContent({ analysisId }: { analysisId: string }) {
 
     // Create edge if there's a parent
     if (parentId && newNode) {
-      await createEdge.mutateAsync({
+      const newEdge = await createEdge.mutateAsync({
         source_id: parentId,
         target_id: newNode.id,
       })
+      // Track edge creation for undo
+      if (newEdge) {
+        const edgeForHistory = {
+          id: newEdge.id,
+          source: newEdge.source_id,
+          target: newEdge.target_id,
+        }
+        pushCommand(createEdgeCommand('ADD_EDGE', newEdge.id, undefined, edgeForHistory))
+      }
     }
 
     // Select the new node
@@ -463,13 +525,22 @@ function FTAStudioContent({ analysisId }: { analysisId: string }) {
     if (!analysis || !tableData) return
     setIsExporting(true)
     try {
-      await exportToPdf({ analysis, tableData })
+      // Fit view and capture tree as image
+      reactFlowInstance.fitView({ padding: 0.2, duration: 0 })
+      await new Promise(resolve => setTimeout(resolve, 100)) // Wait for fitView
+      const treeImage = await captureCanvasAsDataUrl(canvasWrapperRef.current)
+
+      await exportToPdf({
+        analysis,
+        tableData,
+        includeTreeImage: treeImage || undefined,
+      })
     } catch (error) {
       console.error('PDF export failed:', error)
     } finally {
       setIsExporting(false)
     }
-  }, [analysis, tableData])
+  }, [analysis, tableData, reactFlowInstance])
 
   const handleExportPng = useCallback(async () => {
     setIsExporting(true)
@@ -586,12 +657,21 @@ function FTAStudioContent({ analysisId }: { analysisId: string }) {
     // Create same parent edge if exists
     const parentEdge = edges.find(e => e.target === nodeId)
     if (parentEdge && newNode) {
-      await createEdge.mutateAsync({
+      const newEdge = await createEdge.mutateAsync({
         source_id: parentEdge.source,
         target_id: newNode.id,
       })
+      // Track edge creation for undo
+      if (newEdge) {
+        const edgeForHistory = {
+          id: newEdge.id,
+          source: newEdge.source_id,
+          target: newEdge.target_id,
+        }
+        pushCommand(createEdgeCommand('ADD_EDGE', newEdge.id, undefined, edgeForHistory))
+      }
     }
-  }, [nodes, edges, createNode, createEdge])
+  }, [nodes, edges, createNode, createEdge, pushCommand])
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -642,11 +722,20 @@ function FTAStudioContent({ analysisId }: { analysisId: string }) {
         e.preventDefault()
         handleRedo()
       }
+
+      // Ctrl+S to save (shows confirmation since autosave is active)
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault()
+        toast({
+          title: 'All changes saved',
+          description: 'Your work is automatically saved as you make changes.',
+        })
+      }
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [selectedNodeId, selectedNodeIds, handleDeleteNode, handleAddNode, handleAddSibling, handleDuplicateNode, clearSelection, handleUndo, handleRedo])
+  }, [selectedNodeId, selectedNodeIds, handleDeleteNode, handleAddNode, handleAddSibling, handleDuplicateNode, clearSelection, handleUndo, handleRedo, toast])
 
   // Get column label by index
   const getColumnValue = (row: TableRow, colIndex: number): string | null => {
@@ -717,7 +806,10 @@ function FTAStudioContent({ analysisId }: { analysisId: string }) {
   }
 
   // Compute rowspan map when tableData changes
-  const rowSpanMap = tableData ? getRowSpanMap(tableData) : new Map()
+  // Only use rowspan merging when not filtering (filter breaks the parent-child hierarchy)
+  const rowSpanMap = (filteredTableData && !tableSearchQuery.trim())
+    ? getRowSpanMap(filteredTableData)
+    : new Map()
 
   // Get selected node data
   const selectedNode = nodes.find(n => n.id === selectedNodeId)
@@ -824,6 +916,17 @@ function FTAStudioContent({ analysisId }: { analysisId: string }) {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            {/* Collaborators */}
+            {collaborators.length > 0 && (
+              <div className="flex items-center gap-2 mr-2">
+                <PresenceAvatars collaborators={collaborators} maxVisible={3} />
+                {isConnected && (
+                  <span className="text-xs text-muted-foreground">
+                    {collaborators.length} online
+                  </span>
+                )}
+              </div>
+            )}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm" disabled={isExporting}>
@@ -1054,6 +1157,9 @@ function FTAStudioContent({ analysisId }: { analysisId: string }) {
               onDuplicate={handleDuplicateNode}
             />
           )}
+
+          {/* Collaborator Cursors */}
+          <CollaboratorCursors collaborators={collaborators} />
         </div>
 
         {/* Metadata Panel */}
@@ -1071,13 +1177,26 @@ function FTAStudioContent({ analysisId }: { analysisId: string }) {
           <div className="w-96 border-l bg-background overflow-y-auto">
             {selectedNode ? (
               <div className="p-4">
-                <h2 className="text-lg font-semibold mb-4">Node Inspector</h2>
+                <h2 className="text-lg font-semibold mb-2">Node Inspector</h2>
+                <NodeBreadcrumb
+                  nodeId={selectedNodeId}
+                  onNodeClick={(id) => {
+                    setSelectedNodeId(id)
+                    // Pan to the clicked node
+                    const node = nodes.find(n => n.id === id)
+                    if (node) {
+                      reactFlowInstance.fitView({ nodes: [node], duration: 300 })
+                    }
+                  }}
+                  className="mb-4"
+                />
                 <Tabs defaultValue="details">
-                  <TabsList className="grid w-full grid-cols-4">
+                  <TabsList className="grid w-full grid-cols-5">
                     <TabsTrigger value="details">Details</TabsTrigger>
                     <TabsTrigger value="risk">Risk</TabsTrigger>
                     <TabsTrigger value="actions">Actions</TabsTrigger>
                     <TabsTrigger value="evidence">Evidence</TabsTrigger>
+                    <TabsTrigger value="ai">AI Assist</TabsTrigger>
                   </TabsList>
 
                   <TabsContent value="details" className="space-y-4 mt-4">
@@ -1226,6 +1345,14 @@ function FTAStudioContent({ analysisId }: { analysisId: string }) {
                   <TabsContent value="evidence" className="mt-4">
                     <EvidencePanel nodeId={selectedNodeId} />
                   </TabsContent>
+
+                  <TabsContent value="ai" className="mt-4">
+                    <AIAssistPanel
+                      analysisId={analysisId}
+                      nodeId={selectedNodeId}
+                      organizationId={organization?.id || null}
+                    />
+                  </TabsContent>
                 </Tabs>
               </div>
             ) : (
@@ -1239,201 +1366,17 @@ function FTAStudioContent({ analysisId }: { analysisId: string }) {
         )}
         </div>
 
-        {/* Table View - Split Screen */}
+        {/* Table View - Virtualized Split Screen */}
         {showTable && (
-          <div className="h-[40vh] border-t bg-background flex flex-col">
-            <div className="flex items-center justify-between px-4 py-2 border-b bg-muted/30">
-              <h3 className="font-semibold">Table View</h3>
-              <div className="flex items-center gap-4">
-                <p className="text-xs text-muted-foreground">
-                  Click any cell to edit. Changes sync to canvas automatically.
-                </p>
-                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setShowTable(false)}>
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-            <div className="flex-1 overflow-auto">
-            {tableLoading ? (
-              <div className="flex items-center justify-center h-full">
-                <Loader2 className="w-5 h-5 animate-spin" />
-              </div>
-            ) : tableData && tableData.length > 0 ? (
-              <table className="w-full text-sm border-collapse">
-                <thead className="sticky top-0 bg-background z-10">
-                  <tr className="border-b">
-                    <th className="text-left p-2 font-medium bg-muted min-w-[150px]">Failure Mode</th>
-                    <th className="text-left p-2 font-medium bg-muted min-w-[120px]">Why 1</th>
-                    <th className="text-left p-2 font-medium bg-muted min-w-[120px]">Why 2</th>
-                    <th className="text-left p-2 font-medium bg-muted min-w-[120px]">Why 3</th>
-                    <th className="text-left p-2 font-medium bg-muted min-w-[120px]">Why 4</th>
-                    <th className="text-left p-2 font-medium bg-muted min-w-[120px]">Why 5</th>
-                    <th className="text-left p-2 font-medium bg-muted w-14">S</th>
-                    <th className="text-left p-2 font-medium bg-muted w-14">O</th>
-                    <th className="text-left p-2 font-medium bg-muted w-14">D</th>
-                    <th className="text-left p-2 font-medium bg-muted w-20">RPN</th>
-                    <th className="text-left p-2 font-medium bg-muted min-w-[150px]">Investigation Item</th>
-                    <th className="text-left p-2 font-medium bg-muted min-w-[100px]">Person</th>
-                    <th className="text-left p-2 font-medium bg-muted min-w-[100px]">Schedule</th>
-                    <th className="text-left p-2 font-medium bg-muted w-14">W1</th>
-                    <th className="text-left p-2 font-medium bg-muted w-14">W2</th>
-                    <th className="text-left p-2 font-medium bg-muted w-14">W3</th>
-                    <th className="text-left p-2 font-medium bg-muted w-14">W4</th>
-                    <th className="text-left p-2 font-medium bg-muted min-w-[150px]">Result</th>
-                    <th className="text-left p-2 font-medium bg-muted w-24">Judgment</th>
-                    <th className="text-left p-2 font-medium bg-muted min-w-[120px]">Remarks</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {tableData.map((row, rowIndex) => {
-                    const rowSpans = rowSpanMap.get(rowIndex)
-                    return (
-                    <tr key={row.row_id} className="border-b">
-                      {/* Failure Mode (position 0) - with rowSpan */}
-                      {rowSpans?.get(0)?.isFirst !== false && (
-                        <td
-                          className="p-0 border-r align-top bg-muted/30"
-                          rowSpan={rowSpans?.get(0)?.rowSpan || 1}
-                        >
-                          <EditableCell
-                            value={row.failure_mode_top}
-                            onChange={(newValue) => handleTableLabelUpdate(0, row.failure_mode_top, newValue)}
-                          />
-                        </td>
-                      )}
-                      {/* Why 1-5 (positions 1-5) - with rowSpan */}
-                      {[row.why_1, row.why_2, row.why_3, row.why_4, row.why_5].map((why, idx) => {
-                        const colIndex = idx + 1
-                        const spanInfo = rowSpans?.get(colIndex)
-                        // Skip this cell if it's not the first in a merged group
-                        if (spanInfo?.isFirst === false) return null
-                        return (
-                          <td
-                            key={idx}
-                            className={`p-0 border-r align-top ${spanInfo?.rowSpan && spanInfo.rowSpan > 1 ? 'bg-muted/20' : ''}`}
-                            rowSpan={spanInfo?.rowSpan || 1}
-                          >
-                            <EditableCell
-                              value={why}
-                              onChange={(newValue) => {
-                                const oldValue = getColumnValue(row, idx + 1)
-                                if (oldValue) {
-                                  handleTableLabelUpdate(idx + 1, oldValue, newValue)
-                                }
-                              }}
-                              disabled={!why && idx > 0 && !getColumnValue(row, idx)}
-                            />
-                          </td>
-                        )
-                      })}
-                      {/* Severity */}
-                      <td className="p-0 border-r">
-                        <EditableCell
-                          value={row.severity}
-                          type="select"
-                          options={[1,2,3,4,5,6,7,8,9,10].map(n => ({ value: n, label: String(n) }))}
-                          onChange={(value) => handleTableRiskUpdate(row.leaf_node_id, 'severity', value)}
-                        />
-                      </td>
-                      {/* Occurrence */}
-                      <td className="p-0 border-r">
-                        <EditableCell
-                          value={row.occurrence}
-                          type="select"
-                          options={[1,2,3,4,5,6,7,8,9,10].map(n => ({ value: n, label: String(n) }))}
-                          onChange={(value) => handleTableRiskUpdate(row.leaf_node_id, 'occurrence', value)}
-                        />
-                      </td>
-                      {/* Detection */}
-                      <td className="p-0 border-r">
-                        <EditableCell
-                          value={row.detection}
-                          type="select"
-                          options={[1,2,3,4,5,6,7,8,9,10].map(n => ({ value: n, label: String(n) }))}
-                          onChange={(value) => handleTableRiskUpdate(row.leaf_node_id, 'detection', value)}
-                        />
-                      </td>
-                      {/* RPN (read-only, calculated) */}
-                      <td className="p-2 border-r">
-                        {row.rpn ? (
-                          <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-                            row.rpn >= 200 ? 'bg-red-100 text-red-700' :
-                            row.rpn >= 100 ? 'bg-orange-100 text-orange-700' :
-                            row.rpn >= 50 ? 'bg-yellow-100 text-yellow-700' :
-                            'bg-green-100 text-green-700'
-                          }`}>
-                            {row.rpn}
-                          </span>
-                        ) : '—'}
-                      </td>
-                      {/* Investigation Item (read-only for now) */}
-                      <td className="p-2 border-r text-xs">
-                        {row.investigation_item || '—'}
-                      </td>
-                      {/* Person Responsible (read-only) */}
-                      <td className="p-2 border-r text-xs">
-                        {row.person_responsible_name || '—'}
-                      </td>
-                      {/* Schedule (read-only) */}
-                      <td className="p-2 border-r text-xs">
-                        {row.schedule || '—'}
-                      </td>
-                      {/* Week 1-4 Status */}
-                      {[row.week_1_status, row.week_2_status, row.week_3_status, row.week_4_status].map((status, idx) => (
-                        <td key={idx} className="p-1 border-r text-center">
-                          {status ? (
-                            <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${
-                              status === 'done' ? 'bg-green-100 text-green-700' :
-                              status === 'in_progress' ? 'bg-blue-100 text-blue-700' :
-                              status === 'blocked' ? 'bg-red-100 text-red-700' :
-                              'bg-gray-100 text-gray-600'
-                            }`}>
-                              {status === 'not_started' ? 'NS' :
-                               status === 'in_progress' ? 'IP' :
-                               status === 'done' ? 'D' :
-                               status === 'blocked' ? 'B' : '—'}
-                            </span>
-                          ) : '—'}
-                        </td>
-                      ))}
-                      {/* Investigation Result (read-only) */}
-                      <td className="p-2 border-r text-xs max-w-[200px] truncate" title={row.investigation_result || ''}>
-                        {row.investigation_result || '—'}
-                      </td>
-                      {/* Judgment (read-only) */}
-                      <td className="p-2 border-r text-xs">
-                        {row.judgment ? (
-                          <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${
-                            row.judgment === 1 ? 'bg-green-100 text-green-700' :
-                            row.judgment === 2 ? 'bg-blue-100 text-blue-700' :
-                            row.judgment === 3 ? 'bg-gray-100 text-gray-600' :
-                            'bg-yellow-100 text-yellow-700'
-                          }`}>
-                            {row.judgment === 1 ? 'Root' :
-                             row.judgment === 2 ? 'Contrib' :
-                             row.judgment === 3 ? 'Not Cause' :
-                             row.judgment === 4 ? 'Needs More' : row.judgment}
-                          </span>
-                        ) : '—'}
-                      </td>
-                      {/* Remarks (read-only) */}
-                      <td className="p-2 text-xs max-w-[150px] truncate" title={row.remarks || ''}>
-                        {row.remarks || '—'}
-                      </td>
-                    </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            ) : (
-              <div className="flex items-center justify-center h-full">
-                <p className="text-muted-foreground">
-                  No data yet. Add nodes to the canvas to see them here.
-                </p>
-              </div>
-            )}
-            </div>
-          </div>
+          <VirtualizedTable
+            tableData={tableData}
+            isLoading={tableLoading}
+            searchQuery={tableSearchQuery}
+            onSearchChange={setTableSearchQuery}
+            onLabelUpdate={handleTableLabelUpdate}
+            onRiskUpdate={handleTableRiskUpdate}
+            onClose={() => setShowTable(false)}
+          />
         )}
       </div>
     </div>

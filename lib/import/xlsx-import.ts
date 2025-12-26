@@ -16,16 +16,19 @@ export interface ImportedRow {
   severity?: number
   occurrence?: number
   detection?: number
+  // New action lifecycle fields
   investigation_item?: string
+  action_type?: 'INVESTIGATION' | 'CONTAINMENT' | 'CORRECTIVE' | 'PREVENTIVE'
+  status?: 'NOT_STARTED' | 'IN_PROGRESS' | 'BLOCKED' | 'DONE' | 'VERIFIED'
+  priority?: 'LOW' | 'MEDIUM' | 'HIGH'
   person_responsible_name?: string
-  schedule?: string
-  week_1_status?: string
-  week_2_status?: string
-  week_3_status?: string
-  week_4_status?: string
+  due_date?: string
+  close_criteria?: string
   investigation_result?: string
   judgment?: number
   remarks?: string
+  // Legacy fields (for backwards compatibility with old spreadsheets)
+  schedule?: string
 }
 
 export interface ImportResult {
@@ -73,29 +76,38 @@ const columnMappings: Record<string, keyof ImportedRow> = {
   'occurrence': 'occurrence',
   'd': 'detection',
   'detection': 'detection',
+  // Action fields
   'investigation item': 'investigation_item',
   'action item': 'investigation_item',
   'action': 'investigation_item',
+  'action title': 'investigation_item',
+  'title': 'investigation_item',
+  // Action type
+  'action type': 'action_type',
+  'type': 'action_type',
+  // Status
+  'status': 'status',
+  'action status': 'status',
+  // Priority
+  'priority': 'priority',
+  // Person responsible
   'person responsible': 'person_responsible_name',
   'responsible': 'person_responsible_name',
   'owner': 'person_responsible_name',
+  'assigned to': 'person_responsible_name',
+  // Due date (legacy 'schedule' also maps here)
+  'due date': 'due_date',
+  'due': 'due_date',
+  'deadline': 'due_date',
   'schedule': 'schedule',
-  'due date': 'schedule',
-  'due': 'schedule',
-  'week 1 status': 'week_1_status',
-  'week1 status': 'week_1_status',
-  'w1': 'week_1_status',
-  'week 2 status': 'week_2_status',
-  'week2 status': 'week_2_status',
-  'w2': 'week_2_status',
-  'week 3 status': 'week_3_status',
-  'week3 status': 'week_3_status',
-  'w3': 'week_3_status',
-  'week 4 status': 'week_4_status',
-  'week4 status': 'week_4_status',
-  'w4': 'week_4_status',
+  // Close criteria
+  'close criteria': 'close_criteria',
+  'completion criteria': 'close_criteria',
+  'definition of done': 'close_criteria',
+  // Result
   'investigation result': 'investigation_result',
   'result': 'investigation_result',
+  // Judgment and remarks
   'judgment': 'judgment',
   'judgement': 'judgment',
   'remarks': 'remarks',
@@ -103,34 +115,78 @@ const columnMappings: Record<string, keyof ImportedRow> = {
   'comments': 'remarks',
 }
 
-// Status value mappings
-const statusMappings: Record<string, string> = {
-  'done': 'done',
-  'complete': 'done',
-  'completed': 'done',
-  'finished': 'done',
-  'in progress': 'in_progress',
-  'in-progress': 'in_progress',
-  'inprogress': 'in_progress',
-  'ongoing': 'in_progress',
-  'working': 'in_progress',
-  'pending': 'pending',
-  'not started': 'pending',
-  'notstarted': 'pending',
-  'todo': 'pending',
-  'delayed': 'delayed',
-  'late': 'delayed',
-  'overdue': 'delayed',
-  'blocked': 'blocked',
-  'on hold': 'blocked',
-  'onhold': 'blocked',
-  '': '',
+// Action type value mappings
+const actionTypeMappings: Record<string, ImportedRow['action_type']> = {
+  'investigation': 'INVESTIGATION',
+  'investigate': 'INVESTIGATION',
+  'containment': 'CONTAINMENT',
+  'contain': 'CONTAINMENT',
+  'corrective': 'CORRECTIVE',
+  'correct': 'CORRECTIVE',
+  'fix': 'CORRECTIVE',
+  'preventive': 'PREVENTIVE',
+  'prevent': 'PREVENTIVE',
+  'prevention': 'PREVENTIVE',
 }
 
-function normalizeStatus(value: string | undefined): string | undefined {
+// Status value mappings
+const statusMappings: Record<string, ImportedRow['status']> = {
+  'not started': 'NOT_STARTED',
+  'notstarted': 'NOT_STARTED',
+  'pending': 'NOT_STARTED',
+  'todo': 'NOT_STARTED',
+  'new': 'NOT_STARTED',
+  'in progress': 'IN_PROGRESS',
+  'in-progress': 'IN_PROGRESS',
+  'inprogress': 'IN_PROGRESS',
+  'ongoing': 'IN_PROGRESS',
+  'working': 'IN_PROGRESS',
+  'active': 'IN_PROGRESS',
+  'blocked': 'BLOCKED',
+  'on hold': 'BLOCKED',
+  'onhold': 'BLOCKED',
+  'stuck': 'BLOCKED',
+  'done': 'DONE',
+  'complete': 'DONE',
+  'completed': 'DONE',
+  'finished': 'DONE',
+  'verified': 'VERIFIED',
+  'closed': 'VERIFIED',
+  'approved': 'VERIFIED',
+}
+
+// Priority value mappings
+const priorityMappings: Record<string, ImportedRow['priority']> = {
+  'low': 'LOW',
+  'l': 'LOW',
+  '1': 'LOW',
+  'medium': 'MEDIUM',
+  'med': 'MEDIUM',
+  'm': 'MEDIUM',
+  '2': 'MEDIUM',
+  'high': 'HIGH',
+  'h': 'HIGH',
+  '3': 'HIGH',
+  'critical': 'HIGH',
+  'urgent': 'HIGH',
+}
+
+function normalizeActionType(value: string | undefined): ImportedRow['action_type'] | undefined {
   if (!value) return undefined
   const normalized = value.toString().toLowerCase().trim()
-  return statusMappings[normalized] ?? value
+  return actionTypeMappings[normalized]
+}
+
+function normalizeStatus(value: string | undefined): ImportedRow['status'] | undefined {
+  if (!value) return undefined
+  const normalized = value.toString().toLowerCase().trim()
+  return statusMappings[normalized]
+}
+
+function normalizePriority(value: string | undefined): ImportedRow['priority'] | undefined {
+  if (!value) return undefined
+  const normalized = value.toString().toLowerCase().trim()
+  return priorityMappings[normalized]
 }
 
 function parseDate(value: unknown): string | undefined {
@@ -228,10 +284,20 @@ export async function parseXlsxFile(file: File): Promise<ImportResult> {
           if (num !== undefined) {
             rowData[field] = num
           }
-        } else if (field === 'schedule') {
-          rowData[field] = parseDate(value)
-        } else if (field.startsWith('week_') && field.endsWith('_status')) {
+        } else if (field === 'due_date' || field === 'schedule') {
+          const dateValue = parseDate(value)
+          // Map 'schedule' to 'due_date' for backwards compatibility
+          if (field === 'schedule') {
+            rowData.due_date = rowData.due_date || dateValue
+          } else {
+            rowData[field] = dateValue
+          }
+        } else if (field === 'action_type') {
+          rowData[field] = normalizeActionType(String(value))
+        } else if (field === 'status') {
           rowData[field] = normalizeStatus(String(value))
+        } else if (field === 'priority') {
+          rowData[field] = normalizePriority(String(value))
         } else {
           rowData[field] = String(value).trim()
         }

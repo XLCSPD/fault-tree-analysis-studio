@@ -16,45 +16,94 @@ export type Database = {
     Tables: {
       action_items: {
         Row: {
-          analysis_id: string
-          created_at: string | null
           id: string
+          organization_id: string
+          analysis_id: string
+          node_id: string | null
+          action_type: Database["public"]["Enums"]["action_type"]
+          title: string
+          description: string | null
           investigation_item: string
+          person_responsible_id: string | null
+          owner_user_id: string | null
+          due_date: string | null
+          schedule: string | null
+          status: Database["public"]["Enums"]["action_lifecycle_status"]
+          priority: Database["public"]["Enums"]["action_priority"] | null
+          close_criteria: string | null
+          result: string | null
           investigation_result: string | null
           judgment: number | null
-          node_id: string | null
-          person_responsible_id: string | null
           remarks: string | null
-          schedule: string | null
+          evidence_required: string | null
+          evidence_status: Database["public"]["Enums"]["evidence_status"]
+          created_by: string | null
+          updated_by: string | null
+          created_at: string | null
           updated_at: string | null
         }
         Insert: {
-          analysis_id: string
-          created_at?: string | null
           id?: string
-          investigation_item: string
+          organization_id: string
+          analysis_id: string
+          node_id?: string | null
+          action_type?: Database["public"]["Enums"]["action_type"]
+          title: string
+          description?: string | null
+          investigation_item?: string
+          person_responsible_id?: string | null
+          owner_user_id?: string | null
+          due_date?: string | null
+          schedule?: string | null
+          status?: Database["public"]["Enums"]["action_lifecycle_status"]
+          priority?: Database["public"]["Enums"]["action_priority"] | null
+          close_criteria?: string | null
+          result?: string | null
           investigation_result?: string | null
           judgment?: number | null
-          node_id?: string | null
-          person_responsible_id?: string | null
           remarks?: string | null
-          schedule?: string | null
+          evidence_required?: string | null
+          evidence_status?: Database["public"]["Enums"]["evidence_status"]
+          created_by?: string | null
+          updated_by?: string | null
+          created_at?: string | null
           updated_at?: string | null
         }
         Update: {
-          analysis_id?: string
-          created_at?: string | null
           id?: string
+          organization_id?: string
+          analysis_id?: string
+          node_id?: string | null
+          action_type?: Database["public"]["Enums"]["action_type"]
+          title?: string
+          description?: string | null
           investigation_item?: string
+          person_responsible_id?: string | null
+          owner_user_id?: string | null
+          due_date?: string | null
+          schedule?: string | null
+          status?: Database["public"]["Enums"]["action_lifecycle_status"]
+          priority?: Database["public"]["Enums"]["action_priority"] | null
+          close_criteria?: string | null
+          result?: string | null
           investigation_result?: string | null
           judgment?: number | null
-          node_id?: string | null
-          person_responsible_id?: string | null
           remarks?: string | null
-          schedule?: string | null
+          evidence_required?: string | null
+          evidence_status?: Database["public"]["Enums"]["evidence_status"]
+          created_by?: string | null
+          updated_by?: string | null
+          created_at?: string | null
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "action_items_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "action_items_analysis_id_fkey"
             columns: ["analysis_id"]
@@ -76,39 +125,397 @@ export type Database = {
             referencedRelation: "people_directory"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "action_items_owner_user_id_fkey"
+            columns: ["owner_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "action_items_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
         ]
       }
-      action_week_status: {
+      ai_runs: {
         Row: {
-          action_item_id: string
           id: string
-          notes: string | null
-          status: Database["public"]["Enums"]["action_status"]
-          updated_at: string | null
-          week_number: number
+          organization_id: string
+          analysis_id: string
+          node_id: string | null
+          context_type: string
+          feature: Database["public"]["Enums"]["ai_feature_type"]
+          model_provider: string
+          model_name: string | null
+          prompt_version: string | null
+          input_summary: Json | null
+          output_summary: Json | null
+          tokens_used: number | null
+          latency_ms: number | null
+          error_message: string | null
+          created_by: string
+          created_at: string | null
         }
         Insert: {
-          action_item_id: string
           id?: string
-          notes?: string | null
-          status?: Database["public"]["Enums"]["action_status"]
-          updated_at?: string | null
-          week_number: number
+          organization_id: string
+          analysis_id: string
+          node_id?: string | null
+          context_type: string
+          feature: Database["public"]["Enums"]["ai_feature_type"]
+          model_provider?: string
+          model_name?: string | null
+          prompt_version?: string | null
+          input_summary?: Json | null
+          output_summary?: Json | null
+          tokens_used?: number | null
+          latency_ms?: number | null
+          error_message?: string | null
+          created_by: string
+          created_at?: string | null
         }
         Update: {
-          action_item_id?: string
           id?: string
-          notes?: string | null
-          status?: Database["public"]["Enums"]["action_status"]
-          updated_at?: string | null
-          week_number?: number
+          organization_id?: string
+          analysis_id?: string
+          node_id?: string | null
+          context_type?: string
+          feature?: Database["public"]["Enums"]["ai_feature_type"]
+          model_provider?: string
+          model_name?: string | null
+          prompt_version?: string | null
+          input_summary?: Json | null
+          output_summary?: Json | null
+          tokens_used?: number | null
+          latency_ms?: number | null
+          error_message?: string | null
+          created_by?: string
+          created_at?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "action_week_status_action_item_id_fkey"
-            columns: ["action_item_id"]
+            foreignKeyName: "ai_runs_organization_id_fkey"
+            columns: ["organization_id"]
             isOneToOne: false
-            referencedRelation: "action_items"
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_runs_analysis_id_fkey"
+            columns: ["analysis_id"]
+            isOneToOne: false
+            referencedRelation: "analyses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_runs_node_id_fkey"
+            columns: ["node_id"]
+            isOneToOne: false
+            referencedRelation: "nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_runs_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_suggestions: {
+        Row: {
+          id: string
+          ai_run_id: string
+          suggestion_type: Database["public"]["Enums"]["ai_suggestion_type"]
+          payload: Json
+          confidence: Database["public"]["Enums"]["ai_confidence"]
+          rationale: string | null
+          evidence_required: string | null
+          category: string | null
+          status: Database["public"]["Enums"]["ai_suggestion_status"]
+          accepted_by: string | null
+          accepted_at: string | null
+          dismissed_by: string | null
+          dismissed_at: string | null
+          dismiss_reason: string | null
+          applied_entity_id: string | null
+          applied_entity_type: string | null
+          created_at: string | null
+        }
+        Insert: {
+          id?: string
+          ai_run_id: string
+          suggestion_type: Database["public"]["Enums"]["ai_suggestion_type"]
+          payload: Json
+          confidence?: Database["public"]["Enums"]["ai_confidence"]
+          rationale?: string | null
+          evidence_required?: string | null
+          category?: string | null
+          status?: Database["public"]["Enums"]["ai_suggestion_status"]
+          accepted_by?: string | null
+          accepted_at?: string | null
+          dismissed_by?: string | null
+          dismissed_at?: string | null
+          dismiss_reason?: string | null
+          applied_entity_id?: string | null
+          applied_entity_type?: string | null
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          ai_run_id?: string
+          suggestion_type?: Database["public"]["Enums"]["ai_suggestion_type"]
+          payload?: Json
+          confidence?: Database["public"]["Enums"]["ai_confidence"]
+          rationale?: string | null
+          evidence_required?: string | null
+          category?: string | null
+          status?: Database["public"]["Enums"]["ai_suggestion_status"]
+          accepted_by?: string | null
+          accepted_at?: string | null
+          dismissed_by?: string | null
+          dismissed_at?: string | null
+          dismiss_reason?: string | null
+          applied_entity_id?: string | null
+          applied_entity_type?: string | null
+          created_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_suggestions_ai_run_id_fkey"
+            columns: ["ai_run_id"]
+            isOneToOne: false
+            referencedRelation: "ai_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_suggestions_accepted_by_fkey"
+            columns: ["accepted_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_suggestions_dismissed_by_fkey"
+            columns: ["dismissed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      industries: {
+        Row: {
+          id: string
+          name: string
+          description: string | null
+          sort_order: number
+          is_active: boolean
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          description?: string | null
+          sort_order?: number
+          is_active?: boolean
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          description?: string | null
+          sort_order?: number
+          is_active?: boolean
+          created_at?: string
+        }
+        Relationships: []
+      }
+      issue_categories: {
+        Row: {
+          id: string
+          organization_id: string | null
+          name: string
+          description: string | null
+          color: string | null
+          sort_order: number
+          is_active: boolean
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id?: string | null
+          name: string
+          description?: string | null
+          color?: string | null
+          sort_order?: number
+          is_active?: boolean
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string | null
+          name?: string
+          description?: string | null
+          color?: string | null
+          sort_order?: number
+          is_active?: boolean
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "issue_categories_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      metadata_fields: {
+        Row: {
+          id: string
+          organization_id: string
+          key: string
+          label: string
+          field_type: Database["public"]["Enums"]["metadata_field_type"]
+          placeholder: string | null
+          help_text: string | null
+          options: Json | null
+          validation: Json | null
+          is_required: boolean
+          is_active: boolean
+          sort_order: number
+          scope: Database["public"]["Enums"]["metadata_field_scope"]
+          created_at: string
+          created_by: string | null
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id: string
+          key: string
+          label: string
+          field_type?: Database["public"]["Enums"]["metadata_field_type"]
+          placeholder?: string | null
+          help_text?: string | null
+          options?: Json | null
+          validation?: Json | null
+          is_required?: boolean
+          is_active?: boolean
+          sort_order?: number
+          scope?: Database["public"]["Enums"]["metadata_field_scope"]
+          created_at?: string
+          created_by?: string | null
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          key?: string
+          label?: string
+          field_type?: Database["public"]["Enums"]["metadata_field_type"]
+          placeholder?: string | null
+          help_text?: string | null
+          options?: Json | null
+          validation?: Json | null
+          is_required?: boolean
+          is_active?: boolean
+          sort_order?: number
+          scope?: Database["public"]["Enums"]["metadata_field_scope"]
+          created_at?: string
+          created_by?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "metadata_fields_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "metadata_fields_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      analysis_metadata_values: {
+        Row: {
+          id: string
+          organization_id: string
+          analysis_id: string
+          field_id: string
+          value_text: string | null
+          value_number: number | null
+          value_date: string | null
+          value_boolean: boolean | null
+          value_json: Json | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          id?: string
+          organization_id: string
+          analysis_id: string
+          field_id: string
+          value_text?: string | null
+          value_number?: number | null
+          value_date?: string | null
+          value_boolean?: boolean | null
+          value_json?: Json | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          analysis_id?: string
+          field_id?: string
+          value_text?: string | null
+          value_number?: number | null
+          value_date?: string | null
+          value_boolean?: boolean | null
+          value_json?: Json | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "analysis_metadata_values_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "analysis_metadata_values_analysis_id_fkey"
+            columns: ["analysis_id"]
+            isOneToOne: false
+            referencedRelation: "analyses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "analysis_metadata_values_field_id_fkey"
+            columns: ["field_id"]
+            isOneToOne: false
+            referencedRelation: "metadata_fields"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "analysis_metadata_values_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -117,18 +524,31 @@ export type Database = {
         Row: {
           abstract: string | null
           analysis_date: string | null
+          /** @deprecated Use process_workflow instead */
           application: string | null
           created_at: string | null
           created_by: string
           id: string
+          /** @deprecated Use asset_system instead */
           model: string | null
           organization_id: string
+          /** @deprecated Use item_output instead */
           part_name: string | null
           problem_statement: string | null
           related_document: string | null
           status: string | null
           title: string
           updated_at: string | null
+          // New industry-neutral fields
+          industry_id: string | null
+          site_name: string | null
+          area_function: string | null
+          process_workflow: string | null
+          asset_system: string | null
+          item_output: string | null
+          issue_category_id: string | null
+          /** Custom subcategory when Issue Category is "Other (Specify)" */
+          issue_subcategory: string | null
         }
         Insert: {
           abstract?: string | null
@@ -145,6 +565,15 @@ export type Database = {
           status?: string | null
           title: string
           updated_at?: string | null
+          // New industry-neutral fields
+          industry_id?: string | null
+          site_name?: string | null
+          area_function?: string | null
+          process_workflow?: string | null
+          asset_system?: string | null
+          item_output?: string | null
+          issue_category_id?: string | null
+          issue_subcategory?: string | null
         }
         Update: {
           abstract?: string | null
@@ -161,6 +590,15 @@ export type Database = {
           status?: string | null
           title?: string
           updated_at?: string | null
+          // New industry-neutral fields
+          industry_id?: string | null
+          site_name?: string | null
+          area_function?: string | null
+          process_workflow?: string | null
+          asset_system?: string | null
+          item_output?: string | null
+          issue_category_id?: string | null
+          issue_subcategory?: string | null
         }
         Relationships: [
           {
@@ -175,6 +613,20 @@ export type Database = {
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "analyses_industry_id_fkey"
+            columns: ["industry_id"]
+            isOneToOne: false
+            referencedRelation: "industries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "analyses_issue_category_id_fkey"
+            columns: ["issue_category_id"]
+            isOneToOne: false
+            referencedRelation: "issue_categories"
             referencedColumns: ["id"]
           },
         ]
@@ -688,6 +1140,141 @@ export type Database = {
           },
         ]
       }
+      notifications: {
+        Row: {
+          id: string
+          user_id: string
+          organization_id: string
+          type: Database["public"]["Enums"]["notification_type"]
+          title: string
+          description: string | null
+          analysis_id: string | null
+          action_item_id: string | null
+          node_id: string | null
+          actor_id: string | null
+          read_at: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          organization_id: string
+          type: Database["public"]["Enums"]["notification_type"]
+          title: string
+          description?: string | null
+          analysis_id?: string | null
+          action_item_id?: string | null
+          node_id?: string | null
+          actor_id?: string | null
+          read_at?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          organization_id?: string
+          type?: Database["public"]["Enums"]["notification_type"]
+          title?: string
+          description?: string | null
+          analysis_id?: string | null
+          action_item_id?: string | null
+          node_id?: string | null
+          actor_id?: string | null
+          read_at?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_analysis_id_fkey"
+            columns: ["analysis_id"]
+            isOneToOne: false
+            referencedRelation: "analyses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_action_item_id_fkey"
+            columns: ["action_item_id"]
+            isOneToOne: false
+            referencedRelation: "action_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_node_id_fkey"
+            columns: ["node_id"]
+            isOneToOne: false
+            referencedRelation: "nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notification_preferences: {
+        Row: {
+          user_id: string
+          action_assigned: boolean
+          action_due_reminder: boolean
+          action_overdue: boolean
+          analysis_shared: boolean
+          collaboration_updates: boolean
+          email_enabled: boolean
+          email_digest_frequency: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          user_id: string
+          action_assigned?: boolean
+          action_due_reminder?: boolean
+          action_overdue?: boolean
+          analysis_shared?: boolean
+          collaboration_updates?: boolean
+          email_enabled?: boolean
+          email_digest_frequency?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          user_id?: string
+          action_assigned?: boolean
+          action_due_reminder?: boolean
+          action_overdue?: boolean
+          analysis_shared?: boolean
+          collaboration_updates?: boolean
+          email_enabled?: boolean
+          email_digest_frequency?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_preferences_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -722,26 +1309,10 @@ export type Database = {
       get_table_projection: {
         Args: { analysis_id_param: string }
         Returns: {
-          detection: number
-          failure_mode_top: string
-          investigation_item: string
-          investigation_result: string
-          judgment: number
-          leaf_node_id: string
-          metric: string
-          occurrence: number
-          person_responsible_name: string
-          remarks: string
           row_id: string
-          rpn: number
-          schedule: string
-          severity: number
-          specification: string
-          units: string
-          week_1_status: Database["public"]["Enums"]["action_status"]
-          week_2_status: Database["public"]["Enums"]["action_status"]
-          week_3_status: Database["public"]["Enums"]["action_status"]
-          week_4_status: Database["public"]["Enums"]["action_status"]
+          path_depth: number
+          leaf_node_id: string
+          failure_mode_top: string
           why_1: string
           why_2: string
           why_3: string
@@ -751,6 +1322,22 @@ export type Database = {
           why_7: string
           why_8: string
           why_9: string
+          units: string
+          specification: string
+          metric: string
+          severity: number
+          occurrence: number
+          detection: number
+          rpn: number
+          investigation_item: string
+          person_responsible_name: string
+          due_date: string
+          status: Database["public"]["Enums"]["action_lifecycle_status"]
+          result: string
+          judgment: number
+          remarks: string
+          action_count: number
+          evidence_count: number
         }[]
       }
       get_user_organization_id: { Args: never; Returns: string }
@@ -770,10 +1357,21 @@ export type Database = {
     }
     Enums: {
       action_status: "not_started" | "in_progress" | "done" | "blocked"
+      action_type: "INVESTIGATION" | "CONTAINMENT" | "CORRECTIVE" | "PREVENTIVE"
+      action_lifecycle_status: "NOT_STARTED" | "IN_PROGRESS" | "BLOCKED" | "DONE" | "VERIFIED"
+      action_priority: "LOW" | "MEDIUM" | "HIGH"
+      evidence_status: "NONE" | "REQUESTED" | "ATTACHED" | "VERIFIED"
       evidence_type: "photo" | "file" | "link" | "note" | "measurement"
       gate_type: "AND" | "OR"
       node_type: "top_event" | "intermediate_event" | "basic_event" | "gate"
+      notification_type: "action_assigned" | "action_due" | "action_overdue" | "analysis_shared" | "mention" | "collaboration"
       user_role: "viewer" | "contributor" | "facilitator" | "admin"
+      ai_feature_type: "next_whys" | "investigations" | "rewrite_cause" | "controls" | "quality_check"
+      ai_suggestion_type: "node" | "action" | "rewrite" | "control" | "fix"
+      ai_suggestion_status: "proposed" | "accepted" | "dismissed"
+      ai_confidence: "low" | "medium" | "high"
+      metadata_field_type: "text" | "number" | "date" | "select" | "multi_select" | "boolean" | "url" | "email"
+      metadata_field_scope: "analysis" | "node" | "action_item"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -902,10 +1500,20 @@ export const Constants = {
   public: {
     Enums: {
       action_status: ["not_started", "in_progress", "done", "blocked"],
+      action_type: ["INVESTIGATION", "CONTAINMENT", "CORRECTIVE", "PREVENTIVE"],
+      action_lifecycle_status: ["NOT_STARTED", "IN_PROGRESS", "BLOCKED", "DONE", "VERIFIED"],
+      action_priority: ["LOW", "MEDIUM", "HIGH"],
+      evidence_status: ["NONE", "REQUESTED", "ATTACHED", "VERIFIED"],
       evidence_type: ["photo", "file", "link", "note", "measurement"],
       gate_type: ["AND", "OR"],
       node_type: ["top_event", "intermediate_event", "basic_event", "gate"],
       user_role: ["viewer", "contributor", "facilitator", "admin"],
+      ai_feature_type: ["next_whys", "investigations", "rewrite_cause", "controls", "quality_check"],
+      ai_suggestion_type: ["node", "action", "rewrite", "control", "fix"],
+      ai_suggestion_status: ["proposed", "accepted", "dismissed"],
+      ai_confidence: ["low", "medium", "high"],
+      metadata_field_type: ["text", "number", "date", "select", "multi_select", "boolean", "url", "email"],
+      metadata_field_scope: ["analysis", "node", "action_item"],
     },
   },
 } as const

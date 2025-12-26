@@ -66,7 +66,7 @@ export default function DashboardPage() {
           value={statsLoading ? '...' : stats?.actionItems.total ?? 0}
           subtitle={
             stats
-              ? `${stats.actionItems.withSchedule} with schedule`
+              ? `${stats.actionItems.withDueDate} with due date`
               : undefined
           }
           icon={CheckCircle}

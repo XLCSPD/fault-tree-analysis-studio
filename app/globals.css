@@ -166,19 +166,34 @@
 }
 
 .react-flow__controls {
-  background: hsl(var(--card));
-  border: 1px solid hsl(var(--border));
-  border-radius: var(--radius);
+  background: hsl(var(--card)) !important;
+  border: 1px solid hsl(var(--border)) !important;
+  border-radius: var(--radius) !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
 }
 
 .react-flow__controls-button {
-  background: hsl(var(--card));
-  border-bottom: 1px solid hsl(var(--border));
-  fill: hsl(var(--foreground));
+  background: hsl(var(--card)) !important;
+  border: none !important;
+  border-bottom: 1px solid hsl(var(--border)) !important;
+  fill: hsl(var(--foreground)) !important;
+  color: hsl(var(--foreground)) !important;
+}
+
+.react-flow__controls-button svg {
+  fill: hsl(var(--foreground)) !important;
+}
+
+.react-flow__controls-button svg path {
+  fill: hsl(var(--foreground)) !important;
 }
 
 .react-flow__controls-button:hover {
-  background: hsl(var(--muted));
+  background: hsl(var(--muted)) !important;
+}
+
+.react-flow__controls-button:last-child {
+  border-bottom: none !important;
 }
 
 .react-flow__minimap {

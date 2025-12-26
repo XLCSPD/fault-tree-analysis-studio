@@ -110,3 +110,48 @@ export async function exportToSvg(
 export function fitViewForExport(reactFlowInstance: ReactFlowInstance): void {
   reactFlowInstance.fitView({ padding: 0.2, duration: 0 })
 }
+
+/**
+ * Capture the ReactFlow canvas as a base64 data URL for embedding in PDFs
+ */
+export async function captureCanvasAsDataUrl(
+  reactFlowWrapper: HTMLElement | null,
+  options: ExportImageOptions = {}
+): Promise<string | null> {
+  if (!reactFlowWrapper) {
+    return null
+  }
+
+  const { backgroundColor = '#ffffff', quality = 1 } = options
+
+  // Find the viewport element
+  const viewport = reactFlowWrapper.querySelector('.react-flow__viewport') as HTMLElement
+  if (!viewport) {
+    return null
+  }
+
+  try {
+    const dataUrl = await toPng(viewport, {
+      backgroundColor,
+      quality,
+      pixelRatio: 2, // Higher resolution for better PDF quality
+      filter: (node) => {
+        // Exclude controls and minimap from export
+        const className = node.className?.toString() || ''
+        if (
+          className.includes('react-flow__controls') ||
+          className.includes('react-flow__minimap') ||
+          className.includes('react-flow__background')
+        ) {
+          return false
+        }
+        return true
+      },
+    })
+
+    return dataUrl
+  } catch (error) {
+    console.error('Error capturing canvas:', error)
+    return null
+  }
+}

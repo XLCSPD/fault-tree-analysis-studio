@@ -1,6 +1,6 @@
 'use client'
 
-import { Document, Page, Text, View, StyleSheet, pdf } from '@react-pdf/renderer'
+import { Document, Page, Text, View, StyleSheet, Image, pdf } from '@react-pdf/renderer'
 import type { Style } from '@react-pdf/types'
 import { saveAs } from 'file-saver'
 import type { TableRow } from '@/lib/hooks/use-table-projection'
@@ -15,12 +15,13 @@ interface ExportOptions {
   includeTreeImage?: string // Base64 PNG of the tree
 }
 
-// Status label mapping
+// Status label mapping for action lifecycle
 const STATUS_LABELS: Record<string, string> = {
-  not_started: 'Not Started',
-  in_progress: 'In Progress',
-  done: 'Done',
-  blocked: 'Blocked',
+  NOT_STARTED: 'Not Started',
+  IN_PROGRESS: 'In Progress',
+  BLOCKED: 'Blocked',
+  DONE: 'Done',
+  VERIFIED: 'Verified',
 }
 
 // Judgment labels
@@ -247,19 +248,30 @@ function getRiskPriority(rpn: number): { label: string; style: Style } {
 
 // Cover Page Component
 function CoverPage({ analysis }: { analysis: Analysis }) {
+  // Use new fields with fallback to legacy fields
+  const assetSystem = analysis.asset_system || analysis.model
+  const processWorkflow = analysis.process_workflow || analysis.application
+  const itemOutput = analysis.item_output || analysis.part_name
+
   return (
     <Page size="A4" style={styles.coverPage}>
       <Text style={styles.coverSubtitle}>Fault Tree Analysis Report</Text>
       <Text style={styles.coverTitle}>{analysis.title}</Text>
 
-      {analysis.model && (
-        <Text style={styles.coverMeta}>Model: {analysis.model}</Text>
+      {analysis.site_name && (
+        <Text style={styles.coverMeta}>Site: {analysis.site_name}</Text>
       )}
-      {analysis.application && (
-        <Text style={styles.coverMeta}>Application: {analysis.application}</Text>
+      {analysis.area_function && (
+        <Text style={styles.coverMeta}>Area / Function: {analysis.area_function}</Text>
       )}
-      {analysis.part_name && (
-        <Text style={styles.coverMeta}>Part Name: {analysis.part_name}</Text>
+      {processWorkflow && (
+        <Text style={styles.coverMeta}>Process / Workflow: {processWorkflow}</Text>
+      )}
+      {assetSystem && (
+        <Text style={styles.coverMeta}>Asset / System: {assetSystem}</Text>
+      )}
+      {itemOutput && (
+        <Text style={styles.coverMeta}>Item / Output: {itemOutput}</Text>
       )}
 
       <Text style={styles.coverDate}>
@@ -283,8 +295,7 @@ function ExecutiveSummary({ analysis, tableData }: { analysis: Analysis; tableDa
   // Calculate action completion
   const withActions = tableData.filter(r => r.investigation_item)
   const completedActions = tableData.filter(r => {
-    const statuses = [r.week_1_status, r.week_2_status, r.week_3_status, r.week_4_status]
-    return statuses.some(s => s === 'done')
+    return r.status === 'DONE' || r.status === 'VERIFIED'
   }).length
 
   // Top 5 risks
@@ -435,18 +446,41 @@ function truncate(text: string | null | undefined, maxLength: number): string {
   return text.length > maxLength ? text.slice(0, maxLength - 2) + '..' : text
 }
 
+// Tree Visualization Page
+function TreeVisualizationPage({ imageData }: { imageData: string }) {
+  return (
+    <Page size="A4" orientation="landscape" style={styles.page}>
+      <Text style={styles.header}>Fault Tree Visualization</Text>
+
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', marginTop: 20 }}>
+        <Image
+          src={imageData}
+          style={{
+            maxWidth: '100%',
+            maxHeight: 450,
+            objectFit: 'contain',
+          }}
+        />
+      </View>
+
+      <View style={styles.footer}>
+        <Text>Fault Tree Studio</Text>
+        <Text style={styles.pageNumber}>Tree Visualization</Text>
+      </View>
+    </Page>
+  )
+}
+
 // Action Items Summary Page
 function ActionItemsPage({ tableData }: { tableData: TableRow[] }) {
   const actionsData = tableData
     .filter(r => r.investigation_item)
     .map(row => {
-      const statuses = [row.week_1_status, row.week_2_status, row.week_3_status, row.week_4_status].filter(Boolean)
-      let overallStatus = 'Not Started'
-      if (statuses.includes('blocked')) overallStatus = 'Blocked'
-      else if (statuses.length > 0 && statuses.every(s => s === 'done')) overallStatus = 'Done'
-      else if (statuses.includes('in_progress') || statuses.includes('done')) overallStatus = 'In Progress'
-
-      return { ...row, overallStatus }
+      const statusLabel = row.status ? STATUS_LABELS[row.status] || row.status : 'Not Started'
+      const formattedDate = row.due_date
+        ? new Date(row.due_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+        : '-'
+      return { ...row, statusLabel, formattedDate }
     })
 
   return (
@@ -455,28 +489,22 @@ function ActionItemsPage({ tableData }: { tableData: TableRow[] }) {
 
       <View style={styles.table}>
         <View style={styles.tableHeader}>
-          <Text style={{ ...styles.tableCellHeader, width: '25%' }}>Investigation Item</Text>
+          <Text style={{ ...styles.tableCellHeader, width: '30%' }}>Investigation Item</Text>
           <Text style={{ ...styles.tableCellHeader, width: '15%' }}>Owner</Text>
-          <Text style={{ ...styles.tableCellHeader, width: '10%' }}>Schedule</Text>
-          <Text style={{ ...styles.tableCellHeader, width: '8%' }}>Wk 1</Text>
-          <Text style={{ ...styles.tableCellHeader, width: '8%' }}>Wk 2</Text>
-          <Text style={{ ...styles.tableCellHeader, width: '8%' }}>Wk 3</Text>
-          <Text style={{ ...styles.tableCellHeader, width: '8%' }}>Wk 4</Text>
-          <Text style={{ ...styles.tableCellHeader, width: '10%' }}>Status</Text>
-          <Text style={{ ...styles.tableCellHeader, width: '8%' }}>Judgment</Text>
+          <Text style={{ ...styles.tableCellHeader, width: '15%' }}>Due Date</Text>
+          <Text style={{ ...styles.tableCellHeader, width: '15%' }}>Status</Text>
+          <Text style={{ ...styles.tableCellHeader, width: '15%' }}>Result</Text>
+          <Text style={{ ...styles.tableCellHeader, width: '10%' }}>Judgment</Text>
         </View>
 
         {actionsData.slice(0, 25).map((row, index) => (
           <View key={index} style={index % 2 === 0 ? styles.tableRow : styles.tableRowAlt}>
-            <Text style={{ ...styles.tableCell, width: '25%' }}>{truncate(row.investigation_item, 30)}</Text>
+            <Text style={{ ...styles.tableCell, width: '30%' }}>{truncate(row.investigation_item, 40)}</Text>
             <Text style={{ ...styles.tableCell, width: '15%' }}>{truncate(row.person_responsible_name, 15)}</Text>
-            <Text style={{ ...styles.tableCell, width: '10%' }}>{row.schedule || '-'}</Text>
-            <Text style={{ ...styles.tableCell, width: '8%' }}>{row.week_1_status ? STATUS_LABELS[row.week_1_status]?.slice(0, 4) : '-'}</Text>
-            <Text style={{ ...styles.tableCell, width: '8%' }}>{row.week_2_status ? STATUS_LABELS[row.week_2_status]?.slice(0, 4) : '-'}</Text>
-            <Text style={{ ...styles.tableCell, width: '8%' }}>{row.week_3_status ? STATUS_LABELS[row.week_3_status]?.slice(0, 4) : '-'}</Text>
-            <Text style={{ ...styles.tableCell, width: '8%' }}>{row.week_4_status ? STATUS_LABELS[row.week_4_status]?.slice(0, 4) : '-'}</Text>
-            <Text style={{ ...styles.tableCell, width: '10%' }}>{row.overallStatus}</Text>
-            <Text style={{ ...styles.tableCell, width: '8%' }}>{row.judgment || '-'}</Text>
+            <Text style={{ ...styles.tableCell, width: '15%' }}>{row.formattedDate}</Text>
+            <Text style={{ ...styles.tableCell, width: '15%' }}>{row.statusLabel}</Text>
+            <Text style={{ ...styles.tableCell, width: '15%' }}>{truncate(row.investigation_result, 20)}</Text>
+            <Text style={{ ...styles.tableCell, width: '10%' }}>{row.judgment || '-'}</Text>
           </View>
         ))}
       </View>
@@ -490,11 +518,12 @@ function ActionItemsPage({ tableData }: { tableData: TableRow[] }) {
 }
 
 // Main PDF Document Component
-function FTADocument({ analysis, tableData }: { analysis: Analysis; tableData: TableRow[] }) {
+function FTADocument({ analysis, tableData, includeTreeImage }: { analysis: Analysis; tableData: TableRow[]; includeTreeImage?: string }) {
   return (
     <Document>
       <CoverPage analysis={analysis} />
       <ExecutiveSummary analysis={analysis} tableData={tableData} />
+      {includeTreeImage && <TreeVisualizationPage imageData={includeTreeImage} />}
       <TablePages tableData={tableData} />
       <ActionItemsPage tableData={tableData} />
     </Document>
@@ -502,8 +531,8 @@ function FTADocument({ analysis, tableData }: { analysis: Analysis; tableData: T
 }
 
 // Export function
-export async function exportToPdf({ analysis, tableData, filename }: ExportOptions) {
-  const doc = <FTADocument analysis={analysis} tableData={tableData} />
+export async function exportToPdf({ analysis, tableData, filename, includeTreeImage }: ExportOptions) {
+  const doc = <FTADocument analysis={analysis} tableData={tableData} includeTreeImage={includeTreeImage} />
   const blob = await pdf(doc).toBlob()
   const name = filename || `${analysis.title.replace(/[^a-zA-Z0-9]/g, '_')}_FTA_${new Date().toISOString().split('T')[0]}.pdf`
   saveAs(blob, name)

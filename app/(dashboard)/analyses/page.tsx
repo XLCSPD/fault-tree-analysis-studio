@@ -290,11 +290,12 @@ export default function AnalysesPage() {
               {/* Action Menu */}
               <div className="absolute top-3 right-3">
                 <DropdownMenu>
-                  <DropdownMenuTrigger asChild onClick={(e) => e.preventDefault()}>
+                  <DropdownMenuTrigger asChild>
                     <Button
                       variant="ghost"
                       size="icon"
                       className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={(e: React.MouseEvent) => e.preventDefault()}
                     >
                       <MoreVertical className="h-4 w-4" />
                     </Button>

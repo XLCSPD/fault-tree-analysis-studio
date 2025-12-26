@@ -3,25 +3,29 @@
 import { useQuery } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import { useUser } from './use-user'
+import type { Database } from '@/types/database'
+
+type ActionType = Database["public"]["Enums"]["action_type"]
+type ActionStatus = Database["public"]["Enums"]["action_lifecycle_status"]
+type ActionPriority = Database["public"]["Enums"]["action_priority"]
 
 interface ActionItemWithContext {
   id: string
-  investigation_item: string
-  schedule: string | null
-  investigation_result: string | null
-  judgment: number | null
-  remarks: string | null
+  title: string
+  description: string | null
+  action_type: ActionType
+  status: ActionStatus
+  priority: ActionPriority | null
+  due_date: string | null
+  close_criteria: string | null
+  result: string | null
+  evidence_status: Database["public"]["Enums"]["evidence_status"]
   created_at: string
   analysis_id: string
   analysis_title: string
   node_id: string | null
   node_label: string | null
   person_responsible_name: string | null
-  week_statuses: Array<{
-    week_number: number
-    status: string
-    notes: string | null
-  }>
 }
 
 interface MyActionsResult {
@@ -29,6 +33,7 @@ interface MyActionsResult {
   overdue: ActionItemWithContext[]
   thisWeek: ActionItemWithContext[]
   upcoming: ActionItemWithContext[]
+  byStatus: Record<ActionStatus, ActionItemWithContext[]>
   groupedByAnalysis: Record<string, ActionItemWithContext[]>
 }
 
@@ -45,6 +50,13 @@ export function useMyActions() {
           overdue: [],
           thisWeek: [],
           upcoming: [],
+          byStatus: {
+            NOT_STARTED: [],
+            IN_PROGRESS: [],
+            BLOCKED: [],
+            DONE: [],
+            VERIFIED: [],
+          },
           groupedByAnalysis: {},
         }
       }
@@ -63,6 +75,13 @@ export function useMyActions() {
           overdue: [],
           thisWeek: [],
           upcoming: [],
+          byStatus: {
+            NOT_STARTED: [],
+            IN_PROGRESS: [],
+            BLOCKED: [],
+            DONE: [],
+            VERIFIED: [],
+          },
           groupedByAnalysis: {},
         }
       }
@@ -72,11 +91,15 @@ export function useMyActions() {
         .from('action_items')
         .select(`
           id,
-          investigation_item,
-          schedule,
-          investigation_result,
-          judgment,
-          remarks,
+          title,
+          description,
+          action_type,
+          status,
+          priority,
+          due_date,
+          close_criteria,
+          result,
+          evidence_status,
           created_at,
           analysis_id,
           node_id,
@@ -85,7 +108,7 @@ export function useMyActions() {
           person_responsible:people_directory(name)
         `)
         .eq('person_responsible_id', person.id)
-        .order('schedule', { ascending: true, nullsFirst: false }) as { data: any[] | null }
+        .order('due_date', { ascending: true, nullsFirst: false }) as { data: any[] | null }
 
       if (!actionItems) {
         return {
@@ -93,46 +116,35 @@ export function useMyActions() {
           overdue: [],
           thisWeek: [],
           upcoming: [],
+          byStatus: {
+            NOT_STARTED: [],
+            IN_PROGRESS: [],
+            BLOCKED: [],
+            DONE: [],
+            VERIFIED: [],
+          },
           groupedByAnalysis: {},
         }
       }
 
-      // Fetch week statuses for these action items
-      const actionIds = actionItems.map(a => a.id)
-      const { data: weekStatuses } = await (supabase as any)
-        .from('action_week_status')
-        .select('action_item_id, week_number, status, notes')
-        .in('action_item_id', actionIds)
-        .order('week_number', { ascending: true }) as { data: Array<{ action_item_id: string; week_number: number; status: string; notes: string | null }> | null }
-
-      // Group week statuses by action item
-      const statusesByAction: Record<string, Array<{ week_number: number; status: string; notes: string | null }>> = {}
-      weekStatuses?.forEach(ws => {
-        if (!statusesByAction[ws.action_item_id]) {
-          statusesByAction[ws.action_item_id] = []
-        }
-        statusesByAction[ws.action_item_id].push({
-          week_number: ws.week_number,
-          status: ws.status,
-          notes: ws.notes,
-        })
-      })
-
       // Transform to ActionItemWithContext
       const actions: ActionItemWithContext[] = actionItems.map((item: any) => ({
         id: item.id,
-        investigation_item: item.investigation_item,
-        schedule: item.schedule,
-        investigation_result: item.investigation_result,
-        judgment: item.judgment,
-        remarks: item.remarks,
+        title: item.title,
+        description: item.description,
+        action_type: item.action_type,
+        status: item.status,
+        priority: item.priority,
+        due_date: item.due_date,
+        close_criteria: item.close_criteria,
+        result: item.result,
+        evidence_status: item.evidence_status,
         created_at: item.created_at,
         analysis_id: item.analysis_id,
         analysis_title: item.analysis?.title ?? 'Unknown Analysis',
         node_id: item.node_id,
         node_label: item.node?.label ?? null,
         person_responsible_name: item.person_responsible?.name ?? null,
-        week_statuses: statusesByAction[item.id] ?? [],
       }))
 
       // Calculate date ranges
@@ -148,14 +160,31 @@ export function useMyActions() {
       twoWeeksFromNow.setDate(twoWeeksFromNow.getDate() + 14)
       const twoWeeksFromNowStr = twoWeeksFromNow.toISOString().split('T')[0]
 
-      // Filter into categories
-      const overdue = actions.filter(a => a.schedule && a.schedule < todayStr)
-      const thisWeek = actions.filter(
-        a => a.schedule && a.schedule >= todayStr && a.schedule <= weekFromNowStr
+      // Filter by completion status - only non-completed actions can be overdue/upcoming
+      const activeActions = actions.filter(a =>
+        a.status !== 'DONE' && a.status !== 'VERIFIED'
       )
-      const upcoming = actions.filter(
-        a => a.schedule && a.schedule > weekFromNowStr && a.schedule <= twoWeeksFromNowStr
+
+      // Filter into date-based categories
+      const overdue = activeActions.filter(a => a.due_date && a.due_date < todayStr)
+      const thisWeek = activeActions.filter(
+        a => a.due_date && a.due_date >= todayStr && a.due_date <= weekFromNowStr
       )
+      const upcoming = activeActions.filter(
+        a => a.due_date && a.due_date > weekFromNowStr && a.due_date <= twoWeeksFromNowStr
+      )
+
+      // Group by status
+      const byStatus: Record<ActionStatus, ActionItemWithContext[]> = {
+        NOT_STARTED: [],
+        IN_PROGRESS: [],
+        BLOCKED: [],
+        DONE: [],
+        VERIFIED: [],
+      }
+      actions.forEach(action => {
+        byStatus[action.status].push(action)
+      })
 
       // Group by analysis
       const groupedByAnalysis: Record<string, ActionItemWithContext[]> = {}
@@ -172,6 +201,7 @@ export function useMyActions() {
         overdue,
         thisWeek,
         upcoming,
+        byStatus,
         groupedByAnalysis,
       }
     },

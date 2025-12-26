@@ -5,13 +5,14 @@ import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useUser } from '@/lib/hooks/use-user'
-import { Users, Scale, Calculator, Settings, UserCog, Loader2, ArrowLeft, History } from 'lucide-react'
+import { Users, Scale, Calculator, Settings, UserCog, Loader2, ArrowLeft, History, FormInput } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const adminNavItems = [
   { href: '/admin/people', label: 'People Directory', icon: Users },
   { href: '/admin/scales', label: 'Scales & Criteria', icon: Scale },
   { href: '/admin/ap-mapping', label: 'AP Mapping', icon: Calculator },
+  { href: '/admin/custom-fields', label: 'Custom Fields', icon: FormInput },
   { href: '/admin/users', label: 'User Management', icon: UserCog },
   { href: '/admin/audit-log', label: 'Audit Log', icon: History },
   { href: '/settings', label: 'Organization Settings', icon: Settings },

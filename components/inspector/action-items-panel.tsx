@@ -4,10 +4,11 @@ import { useState, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Plus, Trash2, Loader2, ChevronDown, ChevronRight } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
+import { Plus, Trash2, Loader2, ChevronDown, ChevronRight, Calendar, User, AlertCircle, CheckCircle2, Clock, Ban, Shield } from 'lucide-react'
 import { useNodeActionItems, useCreateActionItem, useUpdateActionItem, useDeleteActionItem, type ActionItemWithPerson } from '@/lib/hooks/use-action-items'
 import { PersonSelector } from '@/components/inspector/person-selector'
-import { WeekStatusTracker } from '@/components/inspector/week-status-tracker'
+import { cn } from '@/lib/utils'
 
 interface ActionItemsPanelProps {
   analysisId: string
@@ -15,10 +16,38 @@ interface ActionItemsPanelProps {
   organizationId: string | null
 }
 
+// Action type labels and colors
+const ACTION_TYPES = {
+  INVESTIGATION: { label: 'Investigation', color: 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300' },
+  CONTAINMENT: { label: 'Containment', color: 'bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300' },
+  CORRECTIVE: { label: 'Corrective', color: 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300' },
+  PREVENTIVE: { label: 'Preventive', color: 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300' },
+}
+
+// Status labels, colors, and icons
+const STATUS_CONFIG = {
+  NOT_STARTED: { label: 'Not Started', color: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300', icon: Clock },
+  IN_PROGRESS: { label: 'In Progress', color: 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300', icon: Loader2 },
+  BLOCKED: { label: 'Blocked', color: 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300', icon: Ban },
+  DONE: { label: 'Done', color: 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300', icon: CheckCircle2 },
+  VERIFIED: { label: 'Verified', color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300', icon: Shield },
+}
+
+// Priority labels and colors
+const PRIORITY_CONFIG = {
+  LOW: { label: 'Low', color: 'text-gray-600' },
+  MEDIUM: { label: 'Medium', color: 'text-yellow-600' },
+  HIGH: { label: 'High', color: 'text-red-600' },
+}
+
 export function ActionItemsPanel({ analysisId, nodeId, organizationId }: ActionItemsPanelProps) {
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [isCreating, setIsCreating] = useState(false)
-  const [newItemText, setNewItemText] = useState('')
+  const [newAction, setNewAction] = useState({
+    title: '',
+    action_type: 'INVESTIGATION' as const,
+    priority: 'MEDIUM' as const,
+  })
 
   // Fetch action items for this node
   const { data: actionItems, isLoading } = useNodeActionItems(nodeId)
@@ -28,21 +57,26 @@ export function ActionItemsPanel({ analysisId, nodeId, organizationId }: ActionI
 
   // Handle create new action item
   const handleCreate = useCallback(async () => {
-    if (!newItemText.trim() || !nodeId) return
+    if (!newAction.title.trim() || !nodeId || !organizationId) return
 
     await createActionItem.mutateAsync({
       node_id: nodeId,
-      investigation_item: newItemText.trim(),
+      organization_id: organizationId,
+      title: newAction.title.trim(),
+      investigation_item: newAction.title.trim(),
+      action_type: newAction.action_type,
+      priority: newAction.priority,
+      status: 'NOT_STARTED',
     })
 
-    setNewItemText('')
+    setNewAction({ title: '', action_type: 'INVESTIGATION', priority: 'MEDIUM' })
     setIsCreating(false)
-  }, [newItemText, nodeId, createActionItem])
+  }, [newAction, nodeId, organizationId, createActionItem])
 
   // Handle update field
   const handleUpdate = useCallback(async (
     actionItemId: string,
-    field: keyof ActionItemWithPerson,
+    field: string,
     value: string | number | null
   ) => {
     await updateActionItem.mutateAsync({
@@ -90,7 +124,6 @@ export function ActionItemsPanel({ analysisId, nodeId, organizationId }: ActionI
               onToggle={() => setExpandedId(expandedId === item.id ? null : item.id)}
               onUpdate={handleUpdate}
               onDelete={() => handleDelete(item.id)}
-              analysisId={analysisId}
               organizationId={organizationId}
               isDeleting={deleteActionItem.isPending}
             />
@@ -104,14 +137,14 @@ export function ActionItemsPanel({ analysisId, nodeId, organizationId }: ActionI
 
       {/* Create New Form */}
       {isCreating ? (
-        <div className="p-3 border rounded-lg space-y-3 bg-muted/30">
+        <div className="p-4 border rounded-lg space-y-4 bg-muted/30">
           <div>
-            <Label htmlFor="newItem">Investigation Item</Label>
+            <Label htmlFor="newTitle">Action Title</Label>
             <Input
-              id="newItem"
-              value={newItemText}
-              onChange={(e) => setNewItemText(e.target.value)}
-              placeholder="Describe the investigation item..."
+              id="newTitle"
+              value={newAction.title}
+              onChange={(e) => setNewAction({ ...newAction, title: e.target.value })}
+              placeholder="Describe the action..."
               className="mt-1"
               autoFocus
               onKeyDown={(e) => {
@@ -121,26 +154,57 @@ export function ActionItemsPanel({ analysisId, nodeId, organizationId }: ActionI
                 }
                 if (e.key === 'Escape') {
                   setIsCreating(false)
-                  setNewItemText('')
+                  setNewAction({ title: '', action_type: 'INVESTIGATION', priority: 'MEDIUM' })
                 }
               }}
             />
           </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label htmlFor="actionType">Action Type</Label>
+              <select
+                id="actionType"
+                className="w-full mt-1 px-3 py-2 border rounded-md bg-background text-sm"
+                value={newAction.action_type}
+                onChange={(e) => setNewAction({ ...newAction, action_type: e.target.value as any })}
+              >
+                {Object.entries(ACTION_TYPES).map(([key, { label }]) => (
+                  <option key={key} value={key}>{label}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <Label htmlFor="priority">Priority</Label>
+              <select
+                id="priority"
+                className="w-full mt-1 px-3 py-2 border rounded-md bg-background text-sm"
+                value={newAction.priority}
+                onChange={(e) => setNewAction({ ...newAction, priority: e.target.value as any })}
+              >
+                {Object.entries(PRIORITY_CONFIG).map(([key, { label }]) => (
+                  <option key={key} value={key}>{label}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
           <div className="flex gap-2">
             <Button
               size="sm"
               onClick={handleCreate}
-              disabled={!newItemText.trim() || createActionItem.isPending}
+              disabled={!newAction.title.trim() || createActionItem.isPending}
             >
               {createActionItem.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              Add
+              Create Action
             </Button>
             <Button
               size="sm"
               variant="outline"
               onClick={() => {
                 setIsCreating(false)
-                setNewItemText('')
+                setNewAction({ title: '', action_type: 'INVESTIGATION', priority: 'MEDIUM' })
               }}
             >
               Cancel
@@ -154,7 +218,7 @@ export function ActionItemsPanel({ analysisId, nodeId, organizationId }: ActionI
           disabled={!nodeId}
         >
           <Plus className="w-4 h-4 mr-2" />
-          Add Action Item
+          Add Action
         </Button>
       )}
     </div>
@@ -165,9 +229,8 @@ interface ActionItemCardProps {
   item: ActionItemWithPerson
   isExpanded: boolean
   onToggle: () => void
-  onUpdate: (id: string, field: keyof ActionItemWithPerson, value: string | number | null) => Promise<void>
+  onUpdate: (id: string, field: string, value: string | number | null) => Promise<void>
   onDelete: () => void
-  analysisId: string
   organizationId: string | null
   isDeleting: boolean
 }
@@ -178,13 +241,12 @@ function ActionItemCard({
   onToggle,
   onUpdate,
   onDelete,
-  analysisId,
   organizationId,
   isDeleting,
 }: ActionItemCardProps) {
   const [isUpdating, setIsUpdating] = useState(false)
 
-  const handleFieldUpdate = async (field: keyof ActionItemWithPerson, value: string | number | null) => {
+  const handleFieldUpdate = async (field: string, value: string | number | null) => {
     setIsUpdating(true)
     try {
       await onUpdate(item.id, field, value)
@@ -193,8 +255,24 @@ function ActionItemCard({
     }
   }
 
+  const actionType = (item as any).action_type || 'INVESTIGATION'
+  const status = (item as any).status || 'NOT_STARTED'
+  const priority = (item as any).priority || 'MEDIUM'
+  const dueDate = (item as any).due_date || item.schedule
+  const title = (item as any).title || item.investigation_item
+
+  const typeConfig = ACTION_TYPES[actionType as keyof typeof ACTION_TYPES] || ACTION_TYPES.INVESTIGATION
+  const statusConfig = STATUS_CONFIG[status as keyof typeof STATUS_CONFIG] || STATUS_CONFIG.NOT_STARTED
+  const StatusIcon = statusConfig.icon
+
+  // Check if overdue
+  const isOverdue = dueDate && new Date(dueDate) < new Date() && status !== 'DONE' && status !== 'VERIFIED'
+
   return (
-    <div className="border rounded-lg overflow-hidden">
+    <div className={cn(
+      "border rounded-lg overflow-hidden",
+      isOverdue && "border-red-300 dark:border-red-800"
+    )}>
       {/* Header */}
       <button
         className="w-full flex items-center gap-2 p-3 hover:bg-muted/50 text-left"
@@ -205,29 +283,127 @@ function ActionItemCard({
         ) : (
           <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
         )}
-        <span className="flex-1 text-sm font-medium truncate">
-          {item.investigation_item}
-        </span>
-        {item.person_responsible && (
-          <span className="text-xs bg-muted px-2 py-0.5 rounded">
-            {item.person_responsible.initials}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1">
+            <Badge variant="outline" className={cn('text-xs', typeConfig.color)}>
+              {typeConfig.label}
+            </Badge>
+            <Badge variant="outline" className={cn('text-xs', statusConfig.color)}>
+              <StatusIcon className="w-3 h-3 mr-1" />
+              {statusConfig.label}
+            </Badge>
+            {isOverdue && (
+              <Badge variant="destructive" className="text-xs">
+                <AlertCircle className="w-3 h-3 mr-1" />
+                Overdue
+              </Badge>
+            )}
+          </div>
+          <span className="text-sm font-medium truncate block">
+            {title}
           </span>
-        )}
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          {dueDate && (
+            <span className={cn(
+              "text-xs flex items-center gap-1",
+              isOverdue ? "text-red-600" : "text-muted-foreground"
+            )}>
+              <Calendar className="w-3 h-3" />
+              {new Date(dueDate).toLocaleDateString()}
+            </span>
+          )}
+          {item.person_responsible && (
+            <span className="text-xs bg-muted px-2 py-0.5 rounded flex items-center gap-1">
+              <User className="w-3 h-3" />
+              {item.person_responsible.initials}
+            </span>
+          )}
+        </div>
       </button>
 
       {/* Expanded Content */}
       {isExpanded && (
-        <div className="border-t p-3 space-y-4 bg-muted/20">
-          {/* Investigation Item */}
+        <div className="border-t p-4 space-y-4 bg-muted/20">
+          {/* Title */}
           <div>
-            <Label htmlFor={`item-${item.id}`}>Investigation Item</Label>
+            <Label htmlFor={`title-${item.id}`}>Action Title</Label>
             <Input
-              id={`item-${item.id}`}
-              value={item.investigation_item}
-              onChange={(e) => handleFieldUpdate('investigation_item', e.target.value)}
+              id={`title-${item.id}`}
+              value={title}
+              onChange={(e) => {
+                handleFieldUpdate('title', e.target.value)
+                handleFieldUpdate('investigation_item', e.target.value)
+              }}
               className="mt-1"
               disabled={isUpdating}
             />
+          </div>
+
+          {/* Type & Status */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label htmlFor={`type-${item.id}`}>Action Type</Label>
+              <select
+                id={`type-${item.id}`}
+                className="w-full mt-1 px-3 py-2 border rounded-md bg-background text-sm"
+                value={actionType}
+                onChange={(e) => handleFieldUpdate('action_type', e.target.value)}
+                disabled={isUpdating}
+              >
+                {Object.entries(ACTION_TYPES).map(([key, { label }]) => (
+                  <option key={key} value={key}>{label}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <Label htmlFor={`status-${item.id}`}>Status</Label>
+              <select
+                id={`status-${item.id}`}
+                className="w-full mt-1 px-3 py-2 border rounded-md bg-background text-sm"
+                value={status}
+                onChange={(e) => handleFieldUpdate('status', e.target.value)}
+                disabled={isUpdating}
+              >
+                {Object.entries(STATUS_CONFIG).map(([key, { label }]) => (
+                  <option key={key} value={key}>{label}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Priority & Due Date */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label htmlFor={`priority-${item.id}`}>Priority</Label>
+              <select
+                id={`priority-${item.id}`}
+                className="w-full mt-1 px-3 py-2 border rounded-md bg-background text-sm"
+                value={priority}
+                onChange={(e) => handleFieldUpdate('priority', e.target.value)}
+                disabled={isUpdating}
+              >
+                {Object.entries(PRIORITY_CONFIG).map(([key, { label }]) => (
+                  <option key={key} value={key}>{label}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <Label htmlFor={`due-${item.id}`}>Due Date</Label>
+              <Input
+                id={`due-${item.id}`}
+                type="date"
+                value={dueDate || ''}
+                onChange={(e) => {
+                  handleFieldUpdate('due_date', e.target.value || null)
+                  handleFieldUpdate('schedule', e.target.value || null)
+                }}
+                className="mt-1"
+                disabled={isUpdating}
+              />
+            </div>
           </div>
 
           {/* Person Responsible */}
@@ -241,35 +417,33 @@ function ActionItemCard({
             />
           </div>
 
-          {/* Schedule */}
+          {/* Close Criteria */}
           <div>
-            <Label htmlFor={`schedule-${item.id}`}>Schedule</Label>
-            <Input
-              id={`schedule-${item.id}`}
-              type="date"
-              value={item.schedule || ''}
-              onChange={(e) => handleFieldUpdate('schedule', e.target.value || null)}
-              className="mt-1"
+            <Label htmlFor={`criteria-${item.id}`}>Close Criteria (Definition of Done)</Label>
+            <textarea
+              id={`criteria-${item.id}`}
+              className="w-full mt-1 px-3 py-2 border rounded-md bg-background resize-none text-sm"
+              rows={2}
+              value={(item as any).close_criteria || ''}
+              onChange={(e) => handleFieldUpdate('close_criteria', e.target.value || null)}
+              placeholder="What must be true for this action to be complete?"
               disabled={isUpdating}
             />
           </div>
 
-          {/* Week 1-4 Status */}
-          <WeekStatusTracker
-            actionItemId={item.id}
-            analysisId={analysisId}
-          />
-
-          {/* Investigation Result */}
+          {/* Result */}
           <div>
-            <Label htmlFor={`result-${item.id}`}>Investigation Result</Label>
+            <Label htmlFor={`result-${item.id}`}>Result / Findings</Label>
             <textarea
               id={`result-${item.id}`}
               className="w-full mt-1 px-3 py-2 border rounded-md bg-background resize-none text-sm"
               rows={2}
-              value={item.investigation_result || ''}
-              onChange={(e) => handleFieldUpdate('investigation_result', e.target.value || null)}
-              placeholder="Describe the investigation result..."
+              value={(item as any).result || item.investigation_result || ''}
+              onChange={(e) => {
+                handleFieldUpdate('result', e.target.value || null)
+                handleFieldUpdate('investigation_result', e.target.value || null)
+              }}
+              placeholder="What was found or what changed?"
               disabled={isUpdating}
             />
           </div>
@@ -301,7 +475,7 @@ function ActionItemCard({
               rows={2}
               value={item.remarks || ''}
               onChange={(e) => handleFieldUpdate('remarks', e.target.value || null)}
-              placeholder="Additional remarks..."
+              placeholder="Additional notes..."
               disabled={isUpdating}
             />
           </div>
@@ -320,7 +494,7 @@ function ActionItemCard({
               ) : (
                 <Trash2 className="w-4 h-4 mr-2" />
               )}
-              Delete Action Item
+              Delete Action
             </Button>
           </div>
         </div>

@@ -2,6 +2,9 @@
 
 import { useQuery } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
+import type { Database } from '@/types/database'
+
+type ActionStatus = Database["public"]["Enums"]["action_lifecycle_status"]
 
 interface DashboardStats {
   analyses: {
@@ -13,7 +16,13 @@ interface DashboardStats {
   highRiskCauses: number
   actionItems: {
     total: number
-    withSchedule: number
+    withDueDate: number
+    byType: {
+      investigation: number
+      containment: number
+      corrective: number
+      preventive: number
+    }
   }
   overdueActions: number
 }
@@ -28,7 +37,11 @@ export function useDashboardStats(organizationId: string | null) {
         return {
           analyses: { total: 0, draft: 0, active: 0, completed: 0 },
           highRiskCauses: 0,
-          actionItems: { total: 0, withSchedule: 0 },
+          actionItems: {
+            total: 0,
+            withDueDate: 0,
+            byType: { investigation: 0, containment: 0, corrective: 0, preventive: 0 }
+          },
           overdueActions: 0,
         }
       }
@@ -61,12 +74,14 @@ export function useDashboardStats(organizationId: string | null) {
         (r: any) => r.node?.analysis?.organization_id === organizationId
       ).length ?? 0
 
-      // Fetch action items
+      // Fetch action items with new lifecycle fields
       const { data: actionItems } = await (supabase as any)
         .from('action_items')
         .select(`
           id,
-          schedule,
+          action_type,
+          status,
+          due_date,
           analysis:analyses!inner(organization_id)
         `) as { data: any[] | null }
 
@@ -75,16 +90,30 @@ export function useDashboardStats(organizationId: string | null) {
       ) ?? []
 
       const today = new Date().toISOString().split('T')[0]
+
+      // Count overdue actions (past due date, not done or verified)
       const overdueActions = orgActionItems.filter(
-        a => a.schedule && a.schedule < today
+        a => a.due_date &&
+             a.due_date < today &&
+             a.status !== 'DONE' &&
+             a.status !== 'VERIFIED'
       ).length
+
+      // Count by action type
+      const byType = {
+        investigation: orgActionItems.filter(a => a.action_type === 'INVESTIGATION').length,
+        containment: orgActionItems.filter(a => a.action_type === 'CONTAINMENT').length,
+        corrective: orgActionItems.filter(a => a.action_type === 'CORRECTIVE').length,
+        preventive: orgActionItems.filter(a => a.action_type === 'PREVENTIVE').length,
+      }
 
       return {
         analyses: analysisCounts,
         highRiskCauses,
         actionItems: {
           total: orgActionItems.length,
-          withSchedule: orgActionItems.filter(a => a.schedule).length,
+          withDueDate: orgActionItems.filter(a => a.due_date).length,
+          byType,
         },
         overdueActions,
       }
@@ -161,38 +190,38 @@ export function useActionsByStatus(organizationId: string | null) {
         return []
       }
 
-      // Fetch all week statuses for org's action items
-      const { data: weekStatuses } = await supabase
-        .from('action_week_status')
+      // Fetch action items with new lifecycle status directly
+      const { data: actionItems } = await supabase
+        .from('action_items')
         .select(`
           status,
-          action_item:action_items!inner(
-            analysis:analyses!inner(organization_id)
-          )
+          analysis:analyses!inner(organization_id)
         `)
 
-      const orgStatuses = weekStatuses?.filter(
-        (ws: any) => ws.action_item?.analysis?.organization_id === organizationId
+      const orgActions = actionItems?.filter(
+        (a: any) => a.analysis?.organization_id === organizationId
       ) ?? []
 
-      const statusCounts = {
-        not_started: 0,
-        in_progress: 0,
-        done: 0,
-        blocked: 0,
+      const statusCounts: Record<ActionStatus, number> = {
+        NOT_STARTED: 0,
+        IN_PROGRESS: 0,
+        BLOCKED: 0,
+        DONE: 0,
+        VERIFIED: 0,
       }
 
-      orgStatuses.forEach((ws: any) => {
-        if (ws.status in statusCounts) {
-          statusCounts[ws.status as keyof typeof statusCounts]++
+      orgActions.forEach((a: any) => {
+        if (a.status in statusCounts) {
+          statusCounts[a.status as ActionStatus]++
         }
       })
 
       return [
-        { status: 'Not Started', count: statusCounts.not_started, color: '#9ca3af' },
-        { status: 'In Progress', count: statusCounts.in_progress, color: '#3b82f6' },
-        { status: 'Completed', count: statusCounts.done, color: '#22c55e' },
-        { status: 'Blocked', count: statusCounts.blocked, color: '#ef4444' },
+        { status: 'Not Started', count: statusCounts.NOT_STARTED, color: '#9ca3af' },
+        { status: 'In Progress', count: statusCounts.IN_PROGRESS, color: '#3b82f6' },
+        { status: 'Blocked', count: statusCounts.BLOCKED, color: '#ef4444' },
+        { status: 'Done', count: statusCounts.DONE, color: '#22c55e' },
+        { status: 'Verified', count: statusCounts.VERIFIED, color: '#8b5cf6' },
       ]
     },
     enabled: !!organizationId,

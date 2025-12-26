@@ -132,57 +132,27 @@ export async function POST(request: NextRequest) {
 
           // Create action item if investigation_item exists
           if (row.investigation_item) {
-            const { data: actionItem, error: actionError } = await (supabase as any)
+            await (supabase as any)
               .from('action_items')
               .insert({
+                organization_id: organizationId,
+                analysis_id: analysis.id,
                 node_id: leafNodeId,
-                description: row.investigation_item,
+                title: row.investigation_item,
+                investigation_item: row.investigation_item,
+                action_type: row.action_type || 'INVESTIGATION',
+                status: row.status || 'NOT_STARTED',
+                priority: row.priority || null,
                 person_responsible_id: personResponsibleId,
-                due_date: row.schedule || null,
-                status: 'pending',
+                due_date: row.due_date || row.schedule || null,
+                close_criteria: row.close_criteria || null,
+                result: row.investigation_result || null,
                 investigation_result: row.investigation_result || null,
                 judgment: row.judgment || null,
                 remarks: row.remarks || null,
+                evidence_status: 'NONE',
+                created_by: user.id,
               })
-              .select()
-              .single() as { data: { id: string } | null; error: any }
-
-            // Create week statuses if action item was created
-            if (actionItem && !actionError) {
-              const weekStatuses: Array<{ action_item_id: string; week_number: number; status: string }> = []
-              if (row.week_1_status) {
-                weekStatuses.push({
-                  action_item_id: actionItem.id,
-                  week_number: 1,
-                  status: row.week_1_status,
-                })
-              }
-              if (row.week_2_status) {
-                weekStatuses.push({
-                  action_item_id: actionItem.id,
-                  week_number: 2,
-                  status: row.week_2_status,
-                })
-              }
-              if (row.week_3_status) {
-                weekStatuses.push({
-                  action_item_id: actionItem.id,
-                  week_number: 3,
-                  status: row.week_3_status,
-                })
-              }
-              if (row.week_4_status) {
-                weekStatuses.push({
-                  action_item_id: actionItem.id,
-                  week_number: 4,
-                  status: row.week_4_status,
-                })
-              }
-
-              if (weekStatuses.length > 0) {
-                await (supabase as any).from('action_week_status').insert(weekStatuses)
-              }
-            }
           }
         }
 

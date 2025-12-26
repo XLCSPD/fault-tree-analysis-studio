@@ -15,6 +15,7 @@ import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { ThemeToggleSimple } from '@/components/theme-toggle'
+import { NotificationBell } from '@/components/notifications'
 
 const mainNavItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -80,6 +81,10 @@ export function Sidebar() {
 
       {/* Bottom Section */}
       <div className="p-2 border-t space-y-1">
+        <div className="flex items-center justify-between px-3 py-2">
+          <span className="text-sm text-muted-foreground">Notifications</span>
+          <NotificationBell />
+        </div>
         {user?.role === 'admin' && (
           <Link
             href="/admin/people"
