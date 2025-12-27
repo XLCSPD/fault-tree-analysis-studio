@@ -1397,6 +1397,171 @@ export type Database = {
           },
         ]
       }
+      /** Analysis version snapshots for version control */
+      analysis_versions: {
+        Row: {
+          id: string
+          organization_id: string
+          analysis_id: string
+          version_number: number
+          name: string
+          description: string | null
+          /** Complete snapshot of analysis state */
+          snapshot: Json
+          is_auto: boolean
+          is_locked: boolean
+          parent_version_id: string | null
+          created_by: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id: string
+          analysis_id: string
+          version_number: number
+          name: string
+          description?: string | null
+          snapshot: Json
+          is_auto?: boolean
+          is_locked?: boolean
+          parent_version_id?: string | null
+          created_by: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          analysis_id?: string
+          version_number?: number
+          name?: string
+          description?: string | null
+          snapshot?: Json
+          is_auto?: boolean
+          is_locked?: boolean
+          parent_version_id?: string | null
+          created_by?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "analysis_versions_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "analysis_versions_analysis_id_fkey"
+            columns: ["analysis_id"]
+            isOneToOne: false
+            referencedRelation: "analyses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "analysis_versions_parent_version_id_fkey"
+            columns: ["parent_version_id"]
+            isOneToOne: false
+            referencedRelation: "analysis_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "analysis_versions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      /** Experimental branches for analyses */
+      analysis_branches: {
+        Row: {
+          id: string
+          organization_id: string
+          analysis_id: string
+          name: string
+          description: string | null
+          source_version_id: string
+          current_version_id: string | null
+          status: Database["public"]["Enums"]["branch_status"]
+          merged_at: string | null
+          merged_by: string | null
+          created_by: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id: string
+          analysis_id: string
+          name: string
+          description?: string | null
+          source_version_id: string
+          current_version_id?: string | null
+          status?: Database["public"]["Enums"]["branch_status"]
+          merged_at?: string | null
+          merged_by?: string | null
+          created_by: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          analysis_id?: string
+          name?: string
+          description?: string | null
+          source_version_id?: string
+          current_version_id?: string | null
+          status?: Database["public"]["Enums"]["branch_status"]
+          merged_at?: string | null
+          merged_by?: string | null
+          created_by?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "analysis_branches_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "analysis_branches_analysis_id_fkey"
+            columns: ["analysis_id"]
+            isOneToOne: false
+            referencedRelation: "analyses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "analysis_branches_source_version_id_fkey"
+            columns: ["source_version_id"]
+            isOneToOne: false
+            referencedRelation: "analysis_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "analysis_branches_current_version_id_fkey"
+            columns: ["current_version_id"]
+            isOneToOne: false
+            referencedRelation: "analysis_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "analysis_branches_merged_by_fkey"
+            columns: ["merged_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "analysis_branches_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -1476,6 +1641,45 @@ export type Database = {
         }
         Returns: undefined
       }
+      // Version control functions
+      get_next_version_number: {
+        Args: { p_analysis_id: string }
+        Returns: number
+      }
+      create_analysis_version: {
+        Args: {
+          p_analysis_id: string
+          p_name: string
+          p_description?: string | null
+          p_is_auto?: boolean
+          p_parent_version_id?: string | null
+        }
+        Returns: string
+      }
+      restore_analysis_version: {
+        Args: { p_version_id: string }
+        Returns: string
+      }
+      get_version_diff_summary: {
+        Args: {
+          p_version_a_id: string
+          p_version_b_id: string
+        }
+        Returns: Json
+      }
+      create_analysis_branch: {
+        Args: {
+          p_analysis_id: string
+          p_name: string
+          p_description?: string | null
+          p_source_version_id?: string | null
+        }
+        Returns: string
+      }
+      merge_analysis_branch: {
+        Args: { p_branch_id: string }
+        Returns: string
+      }
     }
     Enums: {
       action_status: "not_started" | "in_progress" | "done" | "blocked"
@@ -1499,6 +1703,8 @@ export type Database = {
       quality_issue_severity: "INFO" | "WARN" | "HIGH"
       quality_issue_status: "OPEN" | "RESOLVED" | "DISMISSED"
       expected_outcome_type: "CONFIRM" | "RULE_OUT" | "EITHER"
+      // Version control enums
+      branch_status: "active" | "merged" | "abandoned"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1645,6 +1851,8 @@ export const Constants = {
       quality_issue_severity: ["INFO", "WARN", "HIGH"],
       quality_issue_status: ["OPEN", "RESOLVED", "DISMISSED"],
       expected_outcome_type: ["CONFIRM", "RULE_OUT", "EITHER"],
+      // Version control
+      branch_status: ["active", "merged", "abandoned"],
     },
   },
 } as const

@@ -5,7 +5,7 @@ import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useUser } from '@/lib/hooks/use-user'
-import { Users, Scale, Calculator, Settings, UserCog, Loader2, ArrowLeft, History, FormInput } from 'lucide-react'
+import { Users, Scale, Calculator, Settings, UserCog, Loader2, ArrowLeft, History, FormInput, GitBranch } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Header } from '@/components/layout/header'
 
@@ -16,6 +16,7 @@ const adminNavItems = [
   { href: '/admin/custom-fields', label: 'Custom Fields', icon: FormInput },
   { href: '/admin/users', label: 'User Management', icon: UserCog },
   { href: '/admin/audit-log', label: 'Audit Log', icon: History },
+  { href: '/admin/versions', label: 'Version Control', icon: GitBranch },
   { href: '/settings', label: 'Organization Settings', icon: Settings },
 ]
 
