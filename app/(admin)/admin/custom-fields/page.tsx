@@ -364,7 +364,7 @@ export default function CustomFieldsPage() {
       is_required: field.is_required,
       is_active: field.is_active,
       sort_order: field.sort_order,
-      options: (field.options as OptionItem[]) || [],
+      options: (field.options as unknown as OptionItem[]) || [],
     })
   }
 
@@ -383,9 +383,9 @@ export default function CustomFieldsPage() {
       }
 
       if (field.id) {
-        await updateField.mutateAsync({ fieldId: field.id, updates: fieldData })
+        await updateField.mutateAsync({ fieldId: field.id, updates: fieldData as any })
       } else {
-        await createField.mutateAsync(fieldData)
+        await createField.mutateAsync(fieldData as any)
       }
       setEditingField(null)
     } catch (error) {
@@ -421,7 +421,7 @@ export default function CustomFieldsPage() {
       <PageHeader
         title="Custom Fields"
         description="Define additional metadata fields for analyses"
-        actions={
+        action={
           <div className="flex items-center gap-2">
             <Button variant="outline" onClick={() => setShowPreview(!showPreview)}>
               {showPreview ? (

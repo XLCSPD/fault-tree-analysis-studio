@@ -7,6 +7,7 @@ import Image from 'next/image'
 import { useUser } from '@/lib/hooks/use-user'
 import { Users, Scale, Calculator, Settings, UserCog, Loader2, ArrowLeft, History, FormInput } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { Header } from '@/components/layout/header'
 
 const adminNavItems = [
   { href: '/admin/people', label: 'People Directory', icon: Users },
@@ -47,10 +48,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <div className="p-4 border-b">
           <Link href="/analyses" className="flex items-center gap-3 mb-3">
             <Image
-              src="/fta-studio-icon.png"
+              src="/Target_node_logo_design-removebg-preview.png"
               alt="FTA Studio"
-              width={32}
-              height={32}
+              width={63}
+              height={63}
               className="flex-shrink-0"
             />
             <span className="font-semibold text-lg">FTA Studio</span>
@@ -90,11 +91,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-auto">
-        <div className="container max-w-5xl py-8 px-6">
-          {children}
-        </div>
-      </main>
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <Header />
+        <main className="flex-1 overflow-auto">
+          <div className="container max-w-5xl py-8 px-6">
+            {children}
+          </div>
+        </main>
+      </div>
     </div>
   )
 }

@@ -93,6 +93,32 @@ export function EditableCell({
     }
   }, [handleBlur, value, onNavigate])
 
+  // Handle key events when in non-editing mode (must be before early returns!)
+  const handleCellKeyDown = useCallback((e: React.KeyboardEvent) => {
+    // Enter or Space to start editing
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault()
+      handleClick()
+    }
+    // Arrow key navigation when not editing (with Alt modifier in edit mode)
+    if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      onNavigate?.('up')
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      onNavigate?.('down')
+    } else if (e.key === 'ArrowLeft') {
+      e.preventDefault()
+      onNavigate?.('left')
+    } else if (e.key === 'ArrowRight') {
+      e.preventDefault()
+      onNavigate?.('right')
+    } else if (e.key === 'Tab') {
+      e.preventDefault()
+      onNavigate?.(e.shiftKey ? 'left' : 'right')
+    }
+  }, [handleClick, onNavigate])
+
   const displayValue = value !== null && value !== undefined && value !== '' ? value : placeholder
 
   if (disabled) {
@@ -149,31 +175,6 @@ export function EditableCell({
       />
     )
   }
-
-  const handleCellKeyDown = useCallback((e: React.KeyboardEvent) => {
-    // Enter or Space to start editing
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault()
-      handleClick()
-    }
-    // Arrow key navigation when not editing (with Alt modifier in edit mode)
-    if (e.key === 'ArrowUp') {
-      e.preventDefault()
-      onNavigate?.('up')
-    } else if (e.key === 'ArrowDown') {
-      e.preventDefault()
-      onNavigate?.('down')
-    } else if (e.key === 'ArrowLeft') {
-      e.preventDefault()
-      onNavigate?.('left')
-    } else if (e.key === 'ArrowRight') {
-      e.preventDefault()
-      onNavigate?.('right')
-    } else if (e.key === 'Tab') {
-      e.preventDefault()
-      onNavigate?.(e.shiftKey ? 'left' : 'right')
-    }
-  }, [handleClick, onNavigate])
 
   return (
     <div

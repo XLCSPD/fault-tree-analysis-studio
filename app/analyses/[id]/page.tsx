@@ -66,13 +66,16 @@ import { EditableCell } from '@/components/table/editable-cell'
 import { VirtualizedTable } from '@/components/table/virtualized-table'
 import { ActionItemsPanel } from '@/components/inspector/action-items-panel'
 import { MetadataPanel } from '@/components/inspector/metadata-panel'
+import { MetadataChips } from '@/components/metadata/metadata-chips'
 import { EvidencePanel } from '@/components/inspector/evidence-panel'
 import { AIAssistPanel } from '@/components/inspector/ai-assist-panel'
+import { QualityPanel, QualityScoreBadge } from '@/components/inspector/quality-panel'
 import { useToast } from '@/lib/hooks/use-toast'
 import { useRealtimeSync } from '@/lib/hooks/use-realtime-sync'
 import { usePresence } from '@/lib/hooks/use-presence'
 import { CollaboratorCursors } from '@/components/canvas/collaborator-cursors'
 import { PresenceAvatars } from '@/components/ui/presence-avatars'
+import { ThemeSwitch } from '@/components/layout/header'
 import type { Node } from '@xyflow/react'
 
 const nodeTypes = {
@@ -88,6 +91,7 @@ function FTAStudioContent({ analysisId }: { analysisId: string }) {
   const [showTable, setShowTable] = useState(true)
   const [showInspector, setShowInspector] = useState(true)
   const [showMetadata, setShowMetadata] = useState(false)
+  const [showQuality, setShowQuality] = useState(false)
   const [editingCell, setEditingCell] = useState<{ rowIndex: number; column: string } | null>(null)
   const [highlightedNodes, setHighlightedNodes] = useState<string[]>([])
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; nodeId: string } | null>(null)
@@ -853,10 +857,10 @@ function FTAStudioContent({ analysisId }: { analysisId: string }) {
           <div className="flex items-center gap-4">
             <Link href="/analyses" className="flex items-center gap-2">
               <NextImage
-                src="/fta-studio-icon.png"
+                src="/Target_node_logo_design-removebg-preview.png"
                 alt="FTA Studio"
-                width={28}
-                height={28}
+                width={63}
+                height={63}
               />
               <Button variant="ghost" size="sm">
                 <ChevronLeft className="w-4 h-4 mr-1" />
@@ -901,10 +905,17 @@ function FTAStudioContent({ analysisId }: { analysisId: string }) {
                   <Pencil className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
                 </button>
               )}
-              <p className="text-sm text-muted-foreground">
-                {[analysis?.model, analysis?.part_name].filter(Boolean).join(' | ') || 'No metadata'}
+              <div className="flex items-center gap-2 flex-wrap">
+                <MetadataChips
+                  analysis={analysis ?? null}
+                  onClick={() => setShowMetadata(true)}
+                />
+                <QualityScoreBadge
+                  analysisId={analysisId}
+                  onClick={() => setShowQuality(true)}
+                />
                 {analysis?.status && (
-                  <span className={`ml-2 px-2 py-0.5 text-xs rounded-full ${
+                  <span className={`px-2 py-0.5 text-xs rounded-full ${
                     analysis.status === 'draft' ? 'bg-yellow-100 text-yellow-800' :
                     analysis.status === 'active' ? 'bg-blue-100 text-blue-800' :
                     'bg-green-100 text-green-800'
@@ -912,7 +923,7 @@ function FTAStudioContent({ analysisId }: { analysisId: string }) {
                     {analysis.status}
                   </span>
                 )}
-              </p>
+              </div>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -927,6 +938,10 @@ function FTAStudioContent({ analysisId }: { analysisId: string }) {
                 )}
               </div>
             )}
+
+            {/* Theme Toggle */}
+            <ThemeSwitch />
+
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm" disabled={isExporting}>
@@ -1168,6 +1183,25 @@ function FTAStudioContent({ analysisId }: { analysisId: string }) {
             <MetadataPanel
               analysisId={analysisId}
               onClose={() => setShowMetadata(false)}
+            />
+          </div>
+        )}
+
+        {/* Quality Panel */}
+        {showQuality && (
+          <div className="w-96 border-l bg-background overflow-hidden">
+            <QualityPanel
+              analysisId={analysisId}
+              onClose={() => setShowQuality(false)}
+              onNavigateToNode={(nodeId) => {
+                setSelectedNodeId(nodeId)
+                setShowQuality(false)
+                // Pan to node
+                const node = nodes.find(n => n.id === nodeId)
+                if (node && reactFlowInstance) {
+                  reactFlowInstance.fitView({ nodes: [node], duration: 300 })
+                }
+              }}
             />
           </div>
         )}

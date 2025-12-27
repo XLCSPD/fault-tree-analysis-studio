@@ -23,6 +23,7 @@ interface DropdownMenuItemProps {
   onClick?: () => void
   disabled?: boolean
   className?: string
+  asChild?: boolean
 }
 
 const DropdownMenuContext = React.createContext<{
@@ -89,7 +90,7 @@ export function DropdownMenuContent({ children, align = 'start', className }: Dr
   )
 }
 
-export function DropdownMenuItem({ children, onClick, disabled, className }: DropdownMenuItemProps) {
+export function DropdownMenuItem({ children, onClick, disabled, className, asChild }: DropdownMenuItemProps) {
   const { setOpen } = React.useContext(DropdownMenuContext)
 
   const handleClick = () => {
@@ -98,13 +99,26 @@ export function DropdownMenuItem({ children, onClick, disabled, className }: Dro
     setOpen(false)
   }
 
+  const itemClassName = cn(
+    'w-full flex items-center gap-2 px-3 py-1.5 text-sm text-left hover:bg-muted',
+    disabled && 'opacity-50 cursor-not-allowed',
+    className
+  )
+
+  if (asChild && React.isValidElement(children)) {
+    const childProps = (children as React.ReactElement<{ onClick?: (e?: React.MouseEvent) => void; className?: string }>).props
+    return React.cloneElement(children as React.ReactElement<{ onClick?: (e?: React.MouseEvent) => void; className?: string }>, {
+      onClick: (e?: React.MouseEvent) => {
+        handleClick()
+        childProps.onClick?.(e)
+      },
+      className: cn(itemClassName, childProps.className),
+    })
+  }
+
   return (
     <button
-      className={cn(
-        'w-full flex items-center gap-2 px-3 py-1.5 text-sm text-left hover:bg-muted',
-        disabled && 'opacity-50 cursor-not-allowed',
-        className
-      )}
+      className={itemClassName}
       onClick={handleClick}
       disabled={disabled}
     >

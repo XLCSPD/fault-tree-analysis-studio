@@ -69,8 +69,8 @@ export function useMetadataFields(organizationId: string | null) {
     queryFn: async () => {
       if (!organizationId) return []
 
-      const { data, error } = await supabase
-        .from('metadata_fields')
+      const { data, error } = await (supabase
+        .from('metadata_fields') as any)
         .select('*')
         .eq('organization_id', organizationId)
         .eq('is_active', true)
@@ -94,8 +94,8 @@ export function useAllMetadataFields(organizationId: string | null) {
     queryFn: async () => {
       if (!organizationId) return []
 
-      const { data, error } = await supabase
-        .from('metadata_fields')
+      const { data, error } = await (supabase
+        .from('metadata_fields') as any)
         .select('*')
         .eq('organization_id', organizationId)
         .order('sort_order', { ascending: true })
@@ -113,8 +113,8 @@ export function useCreateMetadataField(organizationId: string) {
 
   return useMutation({
     mutationFn: async (field: Omit<MetadataFieldInsert, 'organization_id'>) => {
-      const { data, error } = await supabase
-        .from('metadata_fields')
+      const { data, error } = await (supabase
+        .from('metadata_fields') as any)
         .insert({ ...field, organization_id: organizationId })
         .select()
         .single()
@@ -135,8 +135,8 @@ export function useUpdateMetadataField(organizationId: string) {
 
   return useMutation({
     mutationFn: async ({ fieldId, updates }: { fieldId: string; updates: MetadataFieldUpdate }) => {
-      const { data, error } = await supabase
-        .from('metadata_fields')
+      const { data, error } = await (supabase
+        .from('metadata_fields') as any)
         .update(updates)
         .eq('id', fieldId)
         .select()
@@ -158,8 +158,8 @@ export function useDeleteMetadataField(organizationId: string) {
 
   return useMutation({
     mutationFn: async (fieldId: string) => {
-      const { error } = await supabase
-        .from('metadata_fields')
+      const { error } = await (supabase
+        .from('metadata_fields') as any)
         .delete()
         .eq('id', fieldId)
 
@@ -182,8 +182,8 @@ export function useAnalysisMetadataValues(analysisId: string) {
   return useQuery({
     queryKey: ['analysisMetadataValues', analysisId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('analysis_metadata_values')
+      const { data, error } = await (supabase
+        .from('analysis_metadata_values') as any)
         .select(`
           *,
           field:metadata_fields(*)
@@ -220,12 +220,12 @@ export function useUpsertMetadataValue(analysisId: string) {
         .from('analyses')
         .select('organization_id')
         .eq('id', analysisId)
-        .single()
+        .single<{ organization_id: string }>()
 
-      if (analysisError) throw analysisError
+      if (analysisError || !analysis) throw analysisError || new Error('Analysis not found')
 
-      const { data, error } = await supabase
-        .from('analysis_metadata_values')
+      const { data, error } = await (supabase
+        .from('analysis_metadata_values') as any)
         .upsert({
           analysis_id: analysisId,
           field_id: fieldId,

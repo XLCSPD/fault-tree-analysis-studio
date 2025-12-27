@@ -21,6 +21,8 @@ import { useAIAssist } from '@/lib/hooks/use-ai-assist'
 import { useCreateNode, useCreateEdge, useEdges } from '@/lib/hooks/use-nodes'
 import { useCreateActionItem } from '@/lib/hooks/use-action-items'
 import type { AISuggestion, AIModuleType } from '@/lib/ai/types'
+import { WhyQualityModule } from './why-quality-module'
+import { InvestigationQualityModule } from './investigation-quality-module'
 
 interface AIAssistPanelProps {
   analysisId: string
@@ -34,7 +36,10 @@ const CONFIDENCE_CONFIG = {
   high: { label: 'High', color: 'text-green-600 bg-green-50' },
 }
 
-const MODULE_CONFIG = {
+// Subset of AIModuleType that are used in the AI panel cards
+type CardModuleType = 'next_whys' | 'investigations' | 'quality' | 'controls'
+
+const MODULE_CONFIG: Record<CardModuleType, { icon: typeof ListPlus; title: string; description: string }> = {
   next_whys: {
     icon: ListPlus,
     title: 'Propose Next Whys',
@@ -210,7 +215,7 @@ function AIModuleCard({
   hasSuggestions,
   onGenerate,
 }: {
-  module: AIModuleType
+  module: CardModuleType
   isLoading: boolean
   isCurrentModule: boolean
   hasSuggestions: boolean
@@ -328,8 +333,13 @@ export function AIAssistPanel({
         }
       } else if (suggestion.type === 'action') {
         // Create action item for this node
+        if (!organizationId) {
+          throw new Error('Organization ID is required to create action items')
+        }
         const newAction = await createActionItem.mutateAsync({
+          organization_id: organizationId,
           node_id: nodeId,
+          title: suggestion.content.slice(0, 100),
           investigation_item: suggestion.content,
         })
 
@@ -383,8 +393,28 @@ export function AIAssistPanel({
         </div>
       </div>
 
-      {/* AI Modules */}
+      {/* Quality Check Modules */}
       <div className="space-y-3">
+        <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+          Quality Checks
+        </h4>
+        <WhyQualityModule
+          analysisId={analysisId}
+          nodeId={nodeId}
+          organizationId={organizationId}
+        />
+        <InvestigationQualityModule
+          analysisId={analysisId}
+          nodeId={nodeId}
+          organizationId={organizationId}
+        />
+      </div>
+
+      {/* AI Generation Modules */}
+      <div className="space-y-3">
+        <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+          AI Generation
+        </h4>
         <AIModuleCard
           module="next_whys"
           isLoading={aiAssist.isGenerating}

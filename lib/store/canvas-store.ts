@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { Node, Edge, Connection, applyNodeChanges, applyEdgeChanges, NodeChange, EdgeChange } from '@xyflow/react'
+import type { Json } from '@/types/database'
 
 export interface FaultTreeNodeData extends Record<string, unknown> {
   label: string
@@ -18,6 +19,9 @@ export interface FaultTreeNodeData extends Record<string, unknown> {
   gateType?: 'AND' | 'OR' | null
   judgment?: number | null
   isMainCause?: boolean | null
+  // Quality AI fields
+  qualityFlags?: Json | null
+  textAliases?: string[] | null
 }
 
 interface CanvasState {
@@ -292,12 +296,27 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
   },
 
   initializeFromDb: (nodes, edges) => {
+    const { selectedNodeId, selectedNodeIds, isInitialized } = get()
+
+    // Create a set of new node IDs for quick lookup
+    const newNodeIds = new Set(nodes.map(n => n.id))
+
+    // Preserve selection if selected nodes still exist in new data
+    const preservedSelectedNodeId = selectedNodeId && newNodeIds.has(selectedNodeId)
+      ? selectedNodeId
+      : null
+
+    const preservedSelectedNodeIds = new Set(
+      Array.from(selectedNodeIds).filter(id => newNodeIds.has(id))
+    )
+
     set({
       nodes,
       edges,
       isInitialized: true,
-      selectedNodeId: null,
-      selectedNodeIds: new Set(),
+      // Only clear selection on initial load, otherwise preserve if nodes still exist
+      selectedNodeId: isInitialized ? preservedSelectedNodeId : null,
+      selectedNodeIds: isInitialized ? preservedSelectedNodeIds : new Set(),
     })
   },
 

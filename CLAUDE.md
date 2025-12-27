@@ -19,6 +19,10 @@ Run migrations in order against your Supabase database:
 3. `db/03_sync_functions.sql` - Tree/table sync functions
 4. `db/04_notifications.sql` - Notification system (optional)
 5. `db/05_action_lifecycle_and_ai.sql` - AI features (optional)
+   - `db/05b_ai_tables_only.sql` - Run if 05 fails partway through
+6. `db/06_extended_metadata.sql` - Extended analysis metadata (optional)
+7. `db/07_reseed_dropdown_options.sql` - Dropdown options seed data (optional)
+8. `db/08_quality_ai_features.sql` - Quality AI features (metadata assist, why/investigation quality)
 
 ## Architecture
 
@@ -110,6 +114,11 @@ Located in `lib/import/`:
 | Auto-layout (dagre) | `lib/layout/auto-layout.ts` |
 | XLSX import parser | `lib/import/xlsx-import.ts` |
 | Database types | `types/database.ts` |
+| Realtime sync | `lib/hooks/use-realtime-sync.ts` |
+| Presence/cursors | `lib/hooks/use-presence.ts` |
+| Notifications | `lib/hooks/use-notifications.ts` |
+| Quality AI hooks | `lib/hooks/use-quality-ai.ts` |
+| AI types | `lib/ai/types.ts` |
 
 ## Domain Concepts
 
@@ -136,3 +145,4 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 - `TASKS.md` - **Implementation task tracker with status** (start here for dev work)
 - `FTA_Updated_PRD.md` - Product vision, user journeys, UX requirements
 - `FTA_Updated_Requirements.md` - Detailed functional/non-functional specs
+- `docs/quality-ai.md` - Quality AI features documentation (metadata assist, why/investigation quality)

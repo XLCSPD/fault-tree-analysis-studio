@@ -4,6 +4,8 @@ import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useUser } from '@/lib/hooks/use-user'
 import { Sidebar } from '@/components/layout/sidebar'
+import { Header } from '@/components/layout/header'
+import { KeyboardShortcutsModal } from '@/components/help/keyboard-shortcuts-modal'
 import { Loader2 } from 'lucide-react'
 
 export default function DashboardLayout({
@@ -32,11 +34,18 @@ export default function DashboardLayout({
   if (!user) return null
 
   return (
-    <div className="min-h-screen flex bg-muted/30">
-      <Sidebar />
-      <main className="flex-1 overflow-auto">
-        {children}
-      </main>
-    </div>
+    <>
+      <div className="min-h-screen flex bg-muted/30">
+        <Sidebar />
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <Header />
+          <main className="flex-1 overflow-auto">
+            {children}
+          </main>
+        </div>
+      </div>
+      {/* Global keyboard shortcuts modal - press ? to open */}
+      <KeyboardShortcutsModal />
+    </>
   )
 }

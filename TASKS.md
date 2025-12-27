@@ -1,7 +1,7 @@
 # Fault Tree Studio - Implementation Tasks
 
-**Last Updated:** 2025-12-25
-**Project Status:** Phase 6 SUBSTANTIAL - Performance, Realtime Collaboration & Notifications
+**Last Updated:** 2025-12-26
+**Project Status:** Phase 6 SUBSTANTIAL - Performance, Realtime Collaboration, Notifications & Quality AI
 
 ---
 
@@ -404,6 +404,37 @@
 | Notify on mention (future) | `[ ]` | |
 | Email notifications (optional) | `[-]` | Deferred to in-app only |
 
+### 6.7 Quality AI Features
+| Task | Status | Notes |
+|------|--------|-------|
+| Database migration for quality AI | `[x]` | db/08_quality_ai_features.sql |
+| TypeScript types for quality features | `[x]` | Updated types/database.ts + lib/ai/types.ts |
+| Metadata AI Assist API | `[x]` | POST /api/ai/metadata-assist |
+| Why Statement Quality Check API | `[x]` | POST /api/ai/why-quality |
+| Investigation Quality Check API | `[x]` | POST /api/ai/investigation-quality |
+| Quality AI React hooks | `[x]` | lib/hooks/use-quality-ai.ts |
+| Metadata AI Assist UI | `[x]` | components/inspector/metadata-ai-assist.tsx |
+| Why Quality Module UI | `[x]` | components/inspector/why-quality-module.tsx |
+| Investigation Quality Module UI | `[x]` | components/inspector/investigation-quality-module.tsx |
+| Quality Score Indicator | `[x]` | components/quality/quality-score-indicator.tsx |
+| Quality Flag Badge | `[x]` | components/quality/quality-flag-badge.tsx |
+| Canvas node quality badges | `[x]` | Integrated in fault-tree-node.tsx |
+| Quality AI documentation | `[x]` | docs/quality-ai.md |
+
+### 6.8 Help & User Guide System
+| Task | Status | Notes |
+|------|--------|-------|
+| Help content definitions | `[x]` | lib/help/content.ts with 10 categories, 40+ articles |
+| Keyboard shortcuts definitions | `[x]` | lib/help/keyboard-shortcuts.ts |
+| Keyboard shortcuts modal | `[x]` | Press ? anywhere to view shortcuts |
+| Help menu dropdown | `[x]` | In header with quick links |
+| Help center main page | `[x]` | /help with category grid + search |
+| Help article pages | `[x]` | /help/[category]/[slug] dynamic routes |
+| Help sidebar navigation | `[x]` | Collapsible category navigation |
+| Help article renderer | `[x]` | Supports 8 section types |
+| Client-side search | `[x]` | Real-time article search with keyboard nav |
+| Video tutorial placeholders | `[x]` | Prepared for future video content |
+
 ---
 
 ## Completed Items Log
@@ -473,6 +504,18 @@
 | 2025-12-25 | Notification Hooks | P5 | Full CRUD with realtime subscription |
 | 2025-12-25 | Notification Bell | P5 | Bell icon with unread badge |
 | 2025-12-25 | Notification Center | P5 | Dropdown with notification list |
+| 2025-12-26 | Quality AI Migration | P5 | db/08_quality_ai_features.sql with enums and tables |
+| 2025-12-26 | Quality AI Types | P5 | Extended types/database.ts + lib/ai/types.ts |
+| 2025-12-26 | Metadata AI Assist API | P5 | Problem statement + abstract generation |
+| 2025-12-26 | Why Quality API | P5 | Blamey/vague term detection with rewrites |
+| 2025-12-26 | Investigation Quality API | P5 | Hypothesis test conversion |
+| 2025-12-26 | Quality AI Hooks | P5 | use-quality-ai.ts with full CRUD |
+| 2025-12-26 | Metadata AI Assist UI | P5 | Generate/apply suggestions in metadata panel |
+| 2025-12-26 | Why Quality Module | P5 | Issue cards with Replace/Alias/Dismiss |
+| 2025-12-26 | Investigation Quality Module | P5 | Hypothesis test preview + apply |
+| 2025-12-26 | Quality Score Indicator | P5 | Toolbar percentage badge + fix list |
+| 2025-12-26 | Quality Flag Badge | P5 | Canvas node warning badges |
+| 2025-12-26 | Quality AI Documentation | P5 | docs/quality-ai.md with full API specs |
 
 ---
 
@@ -553,6 +596,15 @@ https://supabase.com/dashboard/project/urmhiusqhlsjypyrqpvq
 - Notification Bell: `components/notifications/notification-bell.tsx`
 - Notification Center: `components/notifications/notification-center.tsx`
 - Notifications Schema: `db/04_notifications.sql`
+- Quality AI Hooks: `lib/hooks/use-quality-ai.ts`
+- Quality AI Types: `lib/ai/types.ts`
+- Metadata AI Assist: `components/inspector/metadata-ai-assist.tsx`
+- Why Quality Module: `components/inspector/why-quality-module.tsx`
+- Investigation Quality Module: `components/inspector/investigation-quality-module.tsx`
+- Quality Score Indicator: `components/quality/quality-score-indicator.tsx`
+- Quality Flag Badge: `components/quality/quality-flag-badge.tsx`
+- Quality AI Schema: `db/08_quality_ai_features.sql`
+- Quality AI Docs: `docs/quality-ai.md`
 
 **GitHub Repository:**
 https://github.com/XLCSPD/fault-tree-analysis-studio

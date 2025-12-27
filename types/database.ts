@@ -37,6 +37,14 @@ export type Database = {
           remarks: string | null
           evidence_required: string | null
           evidence_status: Database["public"]["Enums"]["evidence_status"]
+          /** Hypothesis text for investigation (AI-assisted) */
+          hypothesis_text: string | null
+          /** Test method for verifying hypothesis */
+          test_method: string | null
+          /** Pass/fail criteria for the investigation */
+          pass_fail_criteria: string | null
+          /** Expected outcome of investigation */
+          expected_outcome: Database["public"]["Enums"]["expected_outcome_type"] | null
           created_by: string | null
           updated_by: string | null
           created_at: string | null
@@ -64,6 +72,10 @@ export type Database = {
           remarks?: string | null
           evidence_required?: string | null
           evidence_status?: Database["public"]["Enums"]["evidence_status"]
+          hypothesis_text?: string | null
+          test_method?: string | null
+          pass_fail_criteria?: string | null
+          expected_outcome?: Database["public"]["Enums"]["expected_outcome_type"] | null
           created_by?: string | null
           updated_by?: string | null
           created_at?: string | null
@@ -91,6 +103,10 @@ export type Database = {
           remarks?: string | null
           evidence_required?: string | null
           evidence_status?: Database["public"]["Enums"]["evidence_status"]
+          hypothesis_text?: string | null
+          test_method?: string | null
+          pass_fail_criteria?: string | null
+          expected_outcome?: Database["public"]["Enums"]["expected_outcome_type"] | null
           created_by?: string | null
           updated_by?: string | null
           created_at?: string | null
@@ -523,6 +539,8 @@ export type Database = {
       analyses: {
         Row: {
           abstract: string | null
+          /** AI-generated structured summary of the analysis */
+          abstract_summary: string | null
           analysis_date: string | null
           /** @deprecated Use process_workflow instead */
           application: string | null
@@ -552,6 +570,7 @@ export type Database = {
         }
         Insert: {
           abstract?: string | null
+          abstract_summary?: string | null
           analysis_date?: string | null
           application?: string | null
           created_at?: string | null
@@ -577,6 +596,7 @@ export type Database = {
         }
         Update: {
           abstract?: string | null
+          abstract_summary?: string | null
           analysis_date?: string | null
           application?: string | null
           created_at?: string | null
@@ -849,6 +869,10 @@ export type Database = {
           type: Database["public"]["Enums"]["node_type"]
           units: string | null
           updated_at: string | null
+          /** Quality flags from AI quality check */
+          quality_flags: Json | null
+          /** Alternate phrasings for the node label */
+          text_aliases: Json | null
         }
         Insert: {
           analysis_id: string
@@ -865,6 +889,8 @@ export type Database = {
           type: Database["public"]["Enums"]["node_type"]
           units?: string | null
           updated_at?: string | null
+          quality_flags?: Json | null
+          text_aliases?: Json | null
         }
         Update: {
           analysis_id?: string
@@ -881,6 +907,8 @@ export type Database = {
           type?: Database["public"]["Enums"]["node_type"]
           units?: string | null
           updated_at?: string | null
+          quality_flags?: Json | null
+          text_aliases?: Json | null
         }
         Relationships: [
           {
@@ -1275,6 +1303,100 @@ export type Database = {
           },
         ]
       }
+      quality_issues: {
+        Row: {
+          id: string
+          organization_id: string
+          analysis_id: string
+          node_id: string | null
+          action_id: string | null
+          issue_kind: Database["public"]["Enums"]["quality_issue_kind"]
+          severity: Database["public"]["Enums"]["quality_issue_severity"]
+          message: string
+          suggestion: Json | null
+          status: Database["public"]["Enums"]["quality_issue_status"]
+          created_at: string | null
+          created_by: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+        }
+        Insert: {
+          id?: string
+          organization_id: string
+          analysis_id: string
+          node_id?: string | null
+          action_id?: string | null
+          issue_kind: Database["public"]["Enums"]["quality_issue_kind"]
+          severity?: Database["public"]["Enums"]["quality_issue_severity"]
+          message: string
+          suggestion?: Json | null
+          status?: Database["public"]["Enums"]["quality_issue_status"]
+          created_at?: string | null
+          created_by?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          analysis_id?: string
+          node_id?: string | null
+          action_id?: string | null
+          issue_kind?: Database["public"]["Enums"]["quality_issue_kind"]
+          severity?: Database["public"]["Enums"]["quality_issue_severity"]
+          message?: string
+          suggestion?: Json | null
+          status?: Database["public"]["Enums"]["quality_issue_status"]
+          created_at?: string | null
+          created_by?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quality_issues_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quality_issues_analysis_id_fkey"
+            columns: ["analysis_id"]
+            isOneToOne: false
+            referencedRelation: "analyses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quality_issues_node_id_fkey"
+            columns: ["node_id"]
+            isOneToOne: false
+            referencedRelation: "nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quality_issues_action_id_fkey"
+            columns: ["action_id"]
+            isOneToOne: false
+            referencedRelation: "action_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quality_issues_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quality_issues_resolved_by_fkey"
+            columns: ["resolved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -1366,12 +1488,17 @@ export type Database = {
       node_type: "top_event" | "intermediate_event" | "basic_event" | "gate"
       notification_type: "action_assigned" | "action_due" | "action_overdue" | "analysis_shared" | "mention" | "collaboration"
       user_role: "viewer" | "contributor" | "facilitator" | "admin"
-      ai_feature_type: "next_whys" | "investigations" | "rewrite_cause" | "controls" | "quality_check"
+      ai_feature_type: "next_whys" | "investigations" | "rewrite_cause" | "controls" | "quality_check" | "metadata_assist" | "why_quality" | "investigation_quality"
       ai_suggestion_type: "node" | "action" | "rewrite" | "control" | "fix"
       ai_suggestion_status: "proposed" | "accepted" | "dismissed"
       ai_confidence: "low" | "medium" | "high"
       metadata_field_type: "text" | "number" | "date" | "select" | "multi_select" | "boolean" | "url" | "email"
       metadata_field_scope: "analysis" | "node" | "action_item"
+      // Quality AI enums
+      quality_issue_kind: "WHY_CLARITY" | "WHY_TESTABILITY" | "WHY_SYMPTOM_RESTATEMENT" | "WHY_BLAMEY" | "WHY_VAGUE" | "INVESTIGATION_NO_HYPOTHESIS" | "INVESTIGATION_NO_CRITERIA" | "INVESTIGATION_TOO_BROAD" | "INVESTIGATION_NO_EVIDENCE" | "METADATA_GAP"
+      quality_issue_severity: "INFO" | "WARN" | "HIGH"
+      quality_issue_status: "OPEN" | "RESOLVED" | "DISMISSED"
+      expected_outcome_type: "CONFIRM" | "RULE_OUT" | "EITHER"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1508,12 +1635,16 @@ export const Constants = {
       gate_type: ["AND", "OR"],
       node_type: ["top_event", "intermediate_event", "basic_event", "gate"],
       user_role: ["viewer", "contributor", "facilitator", "admin"],
-      ai_feature_type: ["next_whys", "investigations", "rewrite_cause", "controls", "quality_check"],
+      ai_feature_type: ["next_whys", "investigations", "rewrite_cause", "controls", "quality_check", "metadata_assist", "why_quality", "investigation_quality"],
       ai_suggestion_type: ["node", "action", "rewrite", "control", "fix"],
       ai_suggestion_status: ["proposed", "accepted", "dismissed"],
       ai_confidence: ["low", "medium", "high"],
       metadata_field_type: ["text", "number", "date", "select", "multi_select", "boolean", "url", "email"],
       metadata_field_scope: ["analysis", "node", "action_item"],
+      quality_issue_kind: ["WHY_CLARITY", "WHY_TESTABILITY", "WHY_SYMPTOM_RESTATEMENT", "WHY_BLAMEY", "WHY_VAGUE", "INVESTIGATION_NO_HYPOTHESIS", "INVESTIGATION_NO_CRITERIA", "INVESTIGATION_TOO_BROAD", "INVESTIGATION_NO_EVIDENCE", "METADATA_GAP"],
+      quality_issue_severity: ["INFO", "WARN", "HIGH"],
+      quality_issue_status: ["OPEN", "RESOLVED", "DISMISSED"],
+      expected_outcome_type: ["CONFIRM", "RULE_OUT", "EITHER"],
     },
   },
 } as const

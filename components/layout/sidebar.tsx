@@ -14,7 +14,6 @@ import {
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import { ThemeToggleSimple } from '@/components/theme-toggle'
 import { NotificationBell } from '@/components/notifications'
 
 const mainNavItems = [
@@ -40,10 +39,10 @@ export function Sidebar() {
       <div className="p-4 border-b">
         <Link href="/analyses" className="flex items-center gap-3">
           <Image
-            src="/fta-studio-icon.png"
+            src="/Target_node_logo_design-removebg-preview.png"
             alt="FTA Studio"
-            width={32}
-            height={32}
+            width={63}
+            height={63}
             className="flex-shrink-0"
           />
           <span className="font-semibold text-lg">FTA Studio</span>
@@ -99,7 +98,6 @@ export function Sidebar() {
             Admin Settings
           </Link>
         )}
-        <ThemeToggleSimple />
         <button
           onClick={handleSignOut}
           className="flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors text-muted-foreground hover:text-foreground hover:bg-muted w-full"

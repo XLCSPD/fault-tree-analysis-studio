@@ -253,9 +253,9 @@ export default function AnalysesPage() {
           {analyses.map((analysis) => (
             <Card key={analysis.id} className="hover:border-primary/50 transition-colors h-full relative group">
               <Link href={`/analyses/${analysis.id}`} className="block">
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <CardTitle className="text-lg line-clamp-2 pr-8">
+                <CardHeader className="pr-12">
+                  <div className="flex items-start justify-between gap-2">
+                    <CardTitle className="text-lg line-clamp-2">
                       {analysis.title}
                     </CardTitle>
                     <span className={`text-xs px-2 py-1 rounded-full shrink-0 ${

@@ -22,16 +22,80 @@ export async function getNodeContext(
     return null
   }
 
-  // Get the analysis
-  const { data: analysis, error: analysisError } = await supabase
+  // Get the analysis with extended metadata
+  // Try extended query first, fall back to basic if columns don't exist
+  let analysis: {
+    title: string
+    problem_statement: string | null
+    abstract: string | null
+    industry_id?: string | null
+    site_name?: string | null
+    area_function?: string | null
+    process_workflow?: string | null
+    asset_system?: string | null
+    item_output?: string | null
+    issue_category_id?: string | null
+  } | null = null
+
+  const { data: extendedAnalysis, error: extendedError } = await supabase
     .from('analyses')
-    .select('title, problem_statement, abstract')
+    .select(`
+      title,
+      problem_statement,
+      abstract,
+      industry_id,
+      site_name,
+      area_function,
+      process_workflow,
+      asset_system,
+      item_output,
+      issue_category_id
+    `)
     .eq('id', analysisId)
     .single()
 
-  if (analysisError || !analysis) {
-    console.error('Failed to fetch analysis:', analysisError)
+  if (extendedError) {
+    // Fall back to basic query
+    const { data: basicAnalysis, error: basicError } = await supabase
+      .from('analyses')
+      .select('title, problem_statement, abstract')
+      .eq('id', analysisId)
+      .single()
+
+    if (basicError || !basicAnalysis) {
+      console.error('Failed to fetch analysis:', basicError)
+      return null
+    }
+    analysis = basicAnalysis
+  } else {
+    analysis = extendedAnalysis
+  }
+
+  if (!analysis) {
+    console.error('Failed to fetch analysis')
     return null
+  }
+
+  // Fetch industry name if industry_id exists
+  let industryName: string | undefined
+  if (analysis.industry_id) {
+    const { data: industry } = await supabase
+      .from('industries')
+      .select('name')
+      .eq('id', analysis.industry_id)
+      .single()
+    industryName = industry?.name
+  }
+
+  // Fetch issue category name if issue_category_id exists
+  let issueCategoryName: string | undefined
+  if (analysis.issue_category_id) {
+    const { data: category } = await supabase
+      .from('issue_categories')
+      .select('name')
+      .eq('id', analysis.issue_category_id)
+      .single()
+    issueCategoryName = category?.name
   }
 
   // Get node path using database function
@@ -92,6 +156,18 @@ export async function getNodeContext(
     }
   }
 
+  // Build metadata object (only include fields that have values)
+  const metadata: AIRunContext['metadata'] = {}
+  if (industryName) metadata.industry = industryName
+  if (analysis.site_name) metadata.siteName = analysis.site_name
+  if (analysis.area_function) metadata.areaFunction = analysis.area_function
+  if (analysis.process_workflow) metadata.processWorkflow = analysis.process_workflow
+  if (analysis.asset_system) metadata.assetSystem = analysis.asset_system
+  if (analysis.item_output) metadata.itemOutput = analysis.item_output
+  if (issueCategoryName) metadata.issueCategory = issueCategoryName
+  if (analysis.problem_statement) metadata.problemStatement = analysis.problem_statement
+  if (analysis.abstract) metadata.abstract = analysis.abstract
+
   return {
     nodeId,
     nodeLabel: node.label,
@@ -101,6 +177,8 @@ export async function getNodeContext(
     analysisContext: analysis.problem_statement || analysis.abstract || undefined,
     siblingLabels,
     parentLabel,
+    // Include metadata if any fields are populated
+    metadata: Object.keys(metadata).length > 0 ? metadata : undefined,
   }
 }
 
@@ -190,33 +268,48 @@ export function generateMockSuggestions(
 ): AISuggestion[] {
   const generateId = () => crypto.randomUUID()
 
+  // Extract metadata for context-aware suggestions
+  const meta = context.metadata || {}
+  const industry = meta.industry || 'general'
+  const process = meta.processWorkflow || 'the process'
+  const asset = meta.assetSystem || 'the system'
+  const site = meta.siteName || 'the site'
+  const area = meta.areaFunction || 'the area'
+
+  // Build context string for rationale
+  const contextStr = [
+    meta.industry && `${meta.industry} industry`,
+    meta.processWorkflow && `${meta.processWorkflow} process`,
+    meta.assetSystem && `${meta.assetSystem}`,
+  ].filter(Boolean).join(', ')
+
   switch (moduleType) {
     case 'next_whys':
       return [
         {
           id: generateId(),
           type: 'node',
-          content: `Inadequate ${context.nodeLabel.toLowerCase()} procedures`,
-          rationale: `Common root cause pattern when ${context.nodeLabel} is identified as a failure mode.`,
-          evidenceRequired: 'Review procedure documentation and training records',
+          content: `Inadequate ${context.nodeLabel.toLowerCase()} procedures${meta.processWorkflow ? ` in ${process}` : ''}`,
+          rationale: `Common root cause pattern when ${context.nodeLabel} is identified as a failure mode.${contextStr ? ` Context: ${contextStr}.` : ''}`,
+          evidenceRequired: `Review ${process} procedure documentation and training records${meta.siteName ? ` at ${site}` : ''}`,
           confidence: 'medium',
           category: 'Process',
         },
         {
           id: generateId(),
           type: 'node',
-          content: `Insufficient verification of ${context.nodeLabel.toLowerCase()}`,
-          rationale: 'Lack of verification steps often contributes to quality escapes.',
-          evidenceRequired: 'Check inspection records and verification checklists',
+          content: `Insufficient verification of ${context.nodeLabel.toLowerCase()}${meta.assetSystem ? ` for ${asset}` : ''}`,
+          rationale: `Lack of verification steps often contributes to quality escapes.${meta.industry ? ` Typical issue in ${industry}.` : ''}`,
+          evidenceRequired: `Check inspection records and verification checklists${meta.areaFunction ? ` in ${area}` : ''}`,
           confidence: 'medium',
           category: 'Verification',
         },
         {
           id: generateId(),
           type: 'node',
-          content: 'Training gaps in relevant area',
-          rationale: 'Personnel competency is frequently an underlying factor.',
-          evidenceRequired: 'Review training matrix and competency assessments',
+          content: `Training gaps${meta.areaFunction ? ` in ${area}` : ' in relevant area'}`,
+          rationale: `Personnel competency is frequently an underlying factor.${meta.processWorkflow ? ` ${process} requires specific knowledge.` : ''}`,
+          evidenceRequired: `Review training matrix and competency assessments${meta.siteName ? ` for ${site} personnel` : ''}`,
           confidence: 'low',
           category: 'People',
         },
@@ -227,17 +320,17 @@ export function generateMockSuggestions(
         {
           id: generateId(),
           type: 'action',
-          content: `Verify ${context.nodeLabel} against specification requirements`,
-          rationale: 'Confirm whether the condition exists and matches the hypothesis.',
-          evidenceRequired: 'Measurement data, inspection records',
+          content: `Verify ${context.nodeLabel}${meta.assetSystem ? ` on ${asset}` : ''} against specification requirements`,
+          rationale: `Confirm whether the condition exists and matches the hypothesis.${contextStr ? ` Context: ${contextStr}.` : ''}`,
+          evidenceRequired: `Measurement data, inspection records${meta.processWorkflow ? ` from ${process}` : ''}`,
           confidence: 'high',
           category: 'Verification',
         },
         {
           id: generateId(),
           type: 'action',
-          content: `Interview operators involved with ${context.nodeLabel.toLowerCase()}`,
-          rationale: 'Gather firsthand information about process execution.',
+          content: `Interview operators involved with ${context.nodeLabel.toLowerCase()}${meta.siteName ? ` at ${site}` : ''}`,
+          rationale: `Gather firsthand information about ${meta.processWorkflow ? process : 'process'} execution.`,
           evidenceRequired: 'Interview notes, signed statements',
           confidence: 'medium',
           category: 'Investigation',
@@ -245,9 +338,9 @@ export function generateMockSuggestions(
         {
           id: generateId(),
           type: 'action',
-          content: 'Review historical data for similar occurrences',
-          rationale: 'Pattern analysis can reveal systemic issues.',
-          evidenceRequired: 'Quality records, nonconformance database',
+          content: `Review historical data for similar occurrences${meta.assetSystem ? ` involving ${asset}` : ''}`,
+          rationale: `Pattern analysis can reveal systemic issues.${meta.industry ? ` Common investigation approach in ${industry}.` : ''}`,
+          evidenceRequired: `Quality records, nonconformance database${meta.siteName ? ` at ${site}` : ''}`,
           confidence: 'medium',
           category: 'Data Analysis',
         },
@@ -258,16 +351,16 @@ export function generateMockSuggestions(
         {
           id: generateId(),
           type: 'rewrite',
-          content: `${context.nodeLabel} - specify measurable condition`,
-          rationale: 'Cause statements should be specific and measurable for effective investigation.',
-          evidenceRequired: 'Updated cause statement with quantifiable criteria',
+          content: `${context.nodeLabel} - specify measurable condition${meta.assetSystem ? ` for ${asset}` : ''}`,
+          rationale: `Cause statements should be specific and measurable for effective investigation.${meta.industry ? ` ${industry} standards may define acceptable thresholds.` : ''}`,
+          evidenceRequired: `Updated cause statement with quantifiable criteria${meta.processWorkflow ? ` relevant to ${process}` : ''}`,
           confidence: 'high',
         },
         {
           id: generateId(),
           type: 'rewrite',
-          content: `Consider rephrasing to indicate controllable factor`,
-          rationale: 'Causes should point to factors that can be addressed with corrective actions.',
+          content: `Consider rephrasing to indicate controllable factor${meta.areaFunction ? ` within ${area}` : ''}`,
+          rationale: `Causes should point to factors that can be addressed with corrective actions.${contextStr ? ` Context: ${contextStr}.` : ''}`,
           evidenceRequired: 'Revised statement identifying actionable condition',
           confidence: 'medium',
         },
@@ -278,17 +371,17 @@ export function generateMockSuggestions(
         {
           id: generateId(),
           type: 'control',
-          content: `Implement verification checkpoint for ${context.nodeLabel.toLowerCase()}`,
-          rationale: 'Adding verification steps prevents recurrence.',
-          evidenceRequired: 'Updated process documentation, checkpoint records',
+          content: `Implement verification checkpoint for ${context.nodeLabel.toLowerCase()}${meta.processWorkflow ? ` in ${process}` : ''}`,
+          rationale: `Adding verification steps prevents recurrence.${meta.industry ? ` Standard practice in ${industry}.` : ''}`,
+          evidenceRequired: `Updated ${meta.processWorkflow ? process : 'process'} documentation, checkpoint records`,
           confidence: 'high',
           category: 'Preventive',
         },
         {
           id: generateId(),
           type: 'control',
-          content: 'Establish monitoring dashboard for early detection',
-          rationale: 'Continuous monitoring enables faster response.',
+          content: `Establish monitoring dashboard for ${meta.assetSystem ? asset : 'early detection'}`,
+          rationale: `Continuous monitoring enables faster response.${meta.siteName ? ` Deploy at ${site}.` : ''}`,
           evidenceRequired: 'Dashboard configuration, alert thresholds',
           confidence: 'medium',
           category: 'Detective',
@@ -296,9 +389,9 @@ export function generateMockSuggestions(
         {
           id: generateId(),
           type: 'control',
-          content: 'Update training curriculum with lessons learned',
-          rationale: 'Prevent recurrence through improved personnel awareness.',
-          evidenceRequired: 'Training material updates, completion records',
+          content: `Update training curriculum${meta.areaFunction ? ` for ${area}` : ''} with lessons learned`,
+          rationale: `Prevent recurrence through improved personnel awareness.${meta.siteName ? ` Training to be conducted at ${site}.` : ''}`,
+          evidenceRequired: `Training material updates, completion records${meta.processWorkflow ? ` for ${process} personnel` : ''}`,
           confidence: 'medium',
           category: 'Preventive',
         },

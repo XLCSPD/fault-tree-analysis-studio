@@ -1,16 +1,22 @@
 import { Button } from '@/components/ui/button'
 import { ReactNode } from 'react'
 
+interface ActionButton {
+  label: string
+  onClick: () => void
+  icon?: ReactNode
+  disabled?: boolean
+  loading?: boolean
+}
+
 interface PageHeaderProps {
   title: string
   description?: string
-  action?: {
-    label: string
-    onClick: () => void
-    icon?: ReactNode
-    disabled?: boolean
-    loading?: boolean
-  }
+  action?: ActionButton | ReactNode
+}
+
+function isActionButton(action: ActionButton | ReactNode): action is ActionButton {
+  return action !== null && typeof action === 'object' && 'onClick' in action && 'label' in action
 }
 
 export function PageHeader({ title, description, action }: PageHeaderProps) {
@@ -23,13 +29,17 @@ export function PageHeader({ title, description, action }: PageHeaderProps) {
         )}
       </div>
       {action && (
-        <Button
-          onClick={action.onClick}
-          disabled={action.disabled || action.loading}
-        >
-          {action.icon}
-          {action.label}
-        </Button>
+        isActionButton(action) ? (
+          <Button
+            onClick={action.onClick}
+            disabled={action.disabled || action.loading}
+          >
+            {action.icon}
+            {action.label}
+          </Button>
+        ) : (
+          action
+        )
       )}
     </div>
   )

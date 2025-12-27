@@ -5,6 +5,7 @@ import { Square, Triangle, Circle, Diamond, AlertTriangle, ChevronDown, ChevronR
 import type { FaultTreeNodeData } from '@/lib/store/canvas-store'
 import { useCanvasStore } from '@/lib/store/canvas-store'
 import { useCanvasContext } from '@/lib/context/canvas-context'
+import { QualityFlagBadge } from '@/components/quality/quality-flag-badge'
 
 type FaultTreeNodeType = Node<FaultTreeNodeData>
 
@@ -137,6 +138,14 @@ const FaultTreeNode = memo(({ data, selected, id }: NodeProps<FaultTreeNodeType>
         <div className="absolute -right-8 top-1/2 -translate-y-1/2 text-xs bg-accent-soft text-accent-foreground border border-accent px-1.5 py-0.5 rounded-full font-medium">
           +{childrenCount}
         </div>
+      )}
+
+      {/* Quality flag badge */}
+      {data.qualityFlags && (
+        <QualityFlagBadge
+          qualityFlags={data.qualityFlags}
+          className="-top-1 -left-1"
+        />
       )}
     </div>
   )
