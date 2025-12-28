@@ -5,6 +5,7 @@ import { Square, Triangle, Circle, Diamond, AlertTriangle, ChevronDown, ChevronR
 import type { FaultTreeNodeData } from '@/lib/store/canvas-store'
 import { useCanvasStore } from '@/lib/store/canvas-store'
 import { useCanvasContext } from '@/lib/context/canvas-context'
+import { useAnalysisContextSafe } from '@/lib/context/analysis-context'
 import { QualityFlagBadge } from '@/components/quality/quality-flag-badge'
 
 type FaultTreeNodeType = Node<FaultTreeNodeData>
@@ -44,6 +45,8 @@ const FaultTreeNode = memo(({ data, selected, id }: NodeProps<FaultTreeNodeType>
   const { toggleNodeCollapsed } = useCanvasContext()
   const childrenCount = useCanvasStore((state) => state.getChildrenCount(id))
   const hasChildren = childrenCount > 0
+  const analysisContext = useAnalysisContextSafe()
+  const isAdvancedMode = analysisContext?.isAdvancedMode ?? false
 
   const handleCollapseClick = (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -74,7 +77,7 @@ const FaultTreeNode = memo(({ data, selected, id }: NodeProps<FaultTreeNodeType>
           data.nodeType === 'basic_event' && 'text-success',
           data.nodeType === 'gate' && 'text-accent'
         )} />
-        {data.gateType && (
+        {isAdvancedMode && data.gateType && (
           <span className="text-xs font-bold bg-accent-soft text-accent-foreground px-1.5 py-0.5 rounded border border-accent/30">
             {data.gateType}
           </span>

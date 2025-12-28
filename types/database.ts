@@ -567,6 +567,8 @@ export type Database = {
           issue_category_id: string | null
           /** Custom subcategory when Issue Category is "Other (Specify)" */
           issue_subcategory: string | null
+          /** Analysis type: SIMPLE (RCA/5-Why) or ADVANCED (FTA with gates) */
+          analysis_type: Database["public"]["Enums"]["analysis_type"]
         }
         Insert: {
           abstract?: string | null
@@ -593,6 +595,8 @@ export type Database = {
           item_output?: string | null
           issue_category_id?: string | null
           issue_subcategory?: string | null
+          /** Analysis type: SIMPLE (RCA/5-Why) or ADVANCED (FTA with gates). Defaults to SIMPLE */
+          analysis_type?: Database["public"]["Enums"]["analysis_type"]
         }
         Update: {
           abstract?: string | null
@@ -619,6 +623,8 @@ export type Database = {
           item_output?: string | null
           issue_category_id?: string | null
           issue_subcategory?: string | null
+          /** Analysis type: SIMPLE (RCA/5-Why) or ADVANCED (FTA with gates) */
+          analysis_type?: Database["public"]["Enums"]["analysis_type"]
         }
         Relationships: [
           {
@@ -859,6 +865,7 @@ export type Database = {
           collapsed: boolean | null
           created_at: string | null
           evidence_status: string | null
+          gate_type: Database["public"]["Enums"]["gate_type"] | null
           id: string
           label: string
           metric: string | null
@@ -879,6 +886,7 @@ export type Database = {
           collapsed?: boolean | null
           created_at?: string | null
           evidence_status?: string | null
+          gate_type?: Database["public"]["Enums"]["gate_type"] | null
           id?: string
           label: string
           metric?: string | null
@@ -897,6 +905,7 @@ export type Database = {
           collapsed?: boolean | null
           created_at?: string | null
           evidence_status?: string | null
+          gate_type?: Database["public"]["Enums"]["gate_type"] | null
           id?: string
           label?: string
           metric?: string | null
@@ -1705,6 +1714,8 @@ export type Database = {
       expected_outcome_type: "CONFIRM" | "RULE_OUT" | "EITHER"
       // Version control enums
       branch_status: "active" | "merged" | "abandoned"
+      // Analysis type enum
+      analysis_type: "SIMPLE" | "ADVANCED"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1853,6 +1864,8 @@ export const Constants = {
       expected_outcome_type: ["CONFIRM", "RULE_OUT", "EITHER"],
       // Version control
       branch_status: ["active", "merged", "abandoned"],
+      // Analysis type
+      analysis_type: ["SIMPLE", "ADVANCED"],
     },
   },
 } as const

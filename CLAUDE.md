@@ -9,6 +9,7 @@ npm run dev          # Start development server at localhost:3000
 npm run build        # Production build
 npm run lint         # ESLint
 npm run db:seed      # Seed database with example data
+npm run db:migrate   # Run database migrations (requires SUPABASE_* env vars)
 ```
 
 ### Database Setup
@@ -23,6 +24,8 @@ Run migrations in order against your Supabase database:
 6. `db/06_extended_metadata.sql` - Extended analysis metadata (optional)
 7. `db/07_reseed_dropdown_options.sql` - Dropdown options seed data (optional)
 8. `db/08_quality_ai_features.sql` - Quality AI features (metadata assist, why/investigation quality)
+9. `db/09_version_control.sql` - Version snapshots and branching (optional)
+10. `db/10_analysis_type.sql` - Simple RCA vs Advanced FTA mode (optional)
 
 ## Architecture
 
@@ -34,6 +37,7 @@ The core feature is two synchronized views of the same fault tree data:
 
 1. **Canvas View** (`components/canvas/`): Interactive tree using React Flow
    - Nodes represent: top_event → intermediate_event → basic_event
+   - Horizontal left-to-right layout (root on left, leaves on right)
    - State managed in `lib/store/canvas-store.ts` (Zustand)
 
 2. **Table View** (`components/table/`): Excel-like grid matching the original workbook
@@ -56,6 +60,9 @@ Key tables in `db/01_schema.sql`:
 - **people_directory**: Person Responsible dropdown options
 - **scales** + **scale_versions**: Customizable S/O/D rating definitions
 - **audit_log**: Immutable change tracking (auto-populated via triggers)
+- **dropdown_options**: Curated values for Industry, Issue Category fields
+- **quality_issues**: AI-detected quality problems for audit tracking
+- **analysis_versions** + **analysis_branches**: Version control snapshots and branching
 
 TypeScript types in `types/database.ts` mirror the schema.
 
@@ -78,7 +85,11 @@ TypeScript types in `types/database.ts` mirror the schema.
 - `app/analyses/[id]/` - Main studio page (canvas + table views)
 - `app/(admin)/admin/` - User management, scales, AP mapping, audit log
 - `app/api/import/` - XLSX import endpoint
-- `app/api/ai/` - AI suggestions endpoints
+- `app/api/ai/` - AI endpoints:
+  - `metadata-assist/` - Generate problem statement and abstract
+  - `why-quality/` - Check why statements for blamey/vague language
+  - `investigation-quality/` - Convert investigations to hypothesis tests
+- `app/help/` - Help center with searchable articles
 
 ### Undo/Redo System
 
@@ -119,6 +130,10 @@ Located in `lib/import/`:
 | Notifications | `lib/hooks/use-notifications.ts` |
 | Quality AI hooks | `lib/hooks/use-quality-ai.ts` |
 | AI types | `lib/ai/types.ts` |
+| Help content | `lib/help/content.ts` |
+| Keyboard shortcuts | `lib/help/keyboard-shortcuts.ts` |
+| Version control hooks | `lib/hooks/use-versions.ts` |
+| Analysis context | `lib/context/analysis-context.tsx` |
 
 ## Domain Concepts
 
@@ -129,6 +144,7 @@ Located in `lib/import/`:
 - **Node Types**: `top_event` → `intermediate_event` → `basic_event` (leaf)
 - **Gate Types**: `AND` (all children required) / `OR` (any child sufficient)
 - **Judgment Values**: 1-5 scale for cause verification status
+- **Analysis Types**: `SIMPLE` (5-Why RCA, no gates) vs `ADVANCED` (full FTA with gates)
 
 ## Environment Variables
 

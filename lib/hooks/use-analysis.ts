@@ -39,7 +39,7 @@ const CORE_ANALYSIS_FIELDS = [
   'part_name',
 ] as const
 
-// Extended fields from migration 06
+// Extended fields from migration 06+
 const EXTENDED_ANALYSIS_FIELDS = [
   'industry_id',
   'site_name',
@@ -49,6 +49,7 @@ const EXTENDED_ANALYSIS_FIELDS = [
   'item_output',
   'issue_category_id',
   'issue_subcategory',
+  'analysis_type', // From migration 10
 ] as const
 
 export function useUpdateAnalysis(analysisId: string) {

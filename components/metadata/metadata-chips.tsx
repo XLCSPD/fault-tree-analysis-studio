@@ -27,13 +27,13 @@ function Chip({ icon, label, value, className }: ChipProps) {
   return (
     <div
       className={cn(
-        'flex items-center gap-1.5 px-2 py-1 bg-muted/50 rounded-full text-xs',
+        'flex items-center gap-1.5 px-2 py-1 bg-muted/50 rounded-full text-xs shrink-0 whitespace-nowrap',
         className
       )}
       title={`${label}: ${value}`}
     >
       {icon}
-      <span className="truncate max-w-[120px]">{value}</span>
+      <span className="truncate max-w-[100px]">{value}</span>
     </div>
   )
 }
@@ -78,14 +78,14 @@ export function MetadataChips({
     <button
       onClick={onClick}
       className={cn(
-        'flex items-center gap-2 flex-wrap text-left hover:bg-muted/50 rounded-md px-2 py-1 -ml-2 transition-colors',
+        'flex items-center gap-2 text-left hover:bg-muted/50 rounded-md px-2 py-1 -ml-2 transition-colors flex-nowrap shrink-0',
         className
       )}
     >
       {/* Completion badge */}
       <div
         className={cn(
-          'flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium',
+          'flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium shrink-0 whitespace-nowrap',
           completionPercent === 100
             ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
             : completionPercent >= 50

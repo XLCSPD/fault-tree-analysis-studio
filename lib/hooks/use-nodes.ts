@@ -29,6 +29,7 @@ export function dbNodeToReactFlow(node: DbNode, riskScore?: RiskScore | null): N
       tags: node.tags,
       evidenceStatus: node.evidence_status,
       collapsed: node.collapsed,
+      gateType: node.gate_type,
       severity: riskScore?.severity,
       occurrence: riskScore?.occurrence,
       detection: riskScore?.detection,
@@ -201,6 +202,41 @@ export function useDeleteNodes(analysisId: string) {
       queryClient.invalidateQueries({ queryKey: ['nodes', analysisId] })
       queryClient.invalidateQueries({ queryKey: ['edges', analysisId] })
       queryClient.invalidateQueries({ queryKey: ['tableProjection', analysisId] })
+    },
+  })
+}
+
+// Delete multiple nodes with auto-versioning (creates backup before deleting)
+export function useDeleteNodesWithVersioning(analysisId: string) {
+  const supabase = createClient()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({ nodeIds, skipAutoVersion = false }: { nodeIds: string[]; skipAutoVersion?: boolean }) => {
+      if (nodeIds.length === 0) return
+
+      // Create auto-version before bulk delete (if 3+ nodes and not skipped)
+      if (!skipAutoVersion && nodeIds.length >= 3) {
+        const { createAutoVersion } = await import('@/lib/versions/auto-version')
+        await createAutoVersion(
+          analysisId,
+          'bulk_delete',
+          `Deleting ${nodeIds.length} node${nodeIds.length !== 1 ? 's' : ''}`
+        )
+      }
+
+      const { error } = await supabase
+        .from('nodes')
+        .delete()
+        .in('id', nodeIds)
+
+      if (error) throw error
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['nodes', analysisId] })
+      queryClient.invalidateQueries({ queryKey: ['edges', analysisId] })
+      queryClient.invalidateQueries({ queryKey: ['tableProjection', analysisId] })
+      queryClient.invalidateQueries({ queryKey: ['analysisVersions', analysisId] })
     },
   })
 }

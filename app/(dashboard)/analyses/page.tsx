@@ -37,9 +37,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { PlusCircle, FileText, Calendar, Upload, MoreVertical, Pencil, Trash2 } from 'lucide-react'
+import { PlusCircle, FileText, Calendar, Upload, MoreVertical, Pencil, Trash2, GitBranch, List, CheckCircle2 } from 'lucide-react'
 import { format } from 'date-fns'
 import { ImportDialog } from '@/components/import/import-dialog'
+
+type AnalysisType = Database['public']['Enums']['analysis_type']
 
 interface Analysis {
   id: string
@@ -49,6 +51,7 @@ interface Analysis {
   status: string
   created_at: string
   analysis_date: string | null
+  analysis_type: AnalysisType
 }
 
 export default function AnalysesPage() {
@@ -63,6 +66,7 @@ export default function AnalysesPage() {
   // New Analysis Dialog
   const [newDialogOpen, setNewDialogOpen] = useState(false)
   const [newTitle, setNewTitle] = useState('')
+  const [newAnalysisType, setNewAnalysisType] = useState<AnalysisType>('SIMPLE')
 
   // Edit Dialog
   const [editDialogOpen, setEditDialogOpen] = useState(false)
@@ -97,7 +101,7 @@ export default function AnalysesPage() {
 
     const { data, error } = await supabase
       .from('analyses')
-      .select('id, title, model, part_name, status, created_at, analysis_date')
+      .select('id, title, model, part_name, status, created_at, analysis_date, analysis_type')
       .order('created_at', { ascending: false })
 
     if (!error && data) {
@@ -134,7 +138,8 @@ export default function AnalysesPage() {
       organization_id: profile.organization_id,
       created_by: user.id,
       status: 'draft',
-      analysis_date: new Date().toISOString().split('T')[0]
+      analysis_date: new Date().toISOString().split('T')[0],
+      analysis_type: newAnalysisType
     }
 
     const { data, error } = await (supabase
@@ -146,6 +151,7 @@ export default function AnalysesPage() {
     if (!error && data) {
       setNewDialogOpen(false)
       setNewTitle('')
+      setNewAnalysisType('SIMPLE')
       router.push(`/analyses/${data.id}`)
     }
     setCreating(false)
@@ -258,15 +264,24 @@ export default function AnalysesPage() {
                     <CardTitle className="text-lg line-clamp-2">
                       {analysis.title}
                     </CardTitle>
-                    <span className={`text-xs px-2 py-1 rounded-full shrink-0 ${
-                      analysis.status === 'draft'
-                        ? 'bg-warning/10 text-warning'
-                        : analysis.status === 'active'
-                        ? 'bg-primary/10 text-primary'
-                        : 'bg-success/10 text-success'
-                    }`}>
-                      {analysis.status}
-                    </span>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <span className={`text-xs px-2 py-1 rounded-full ${
+                        analysis.analysis_type === 'ADVANCED'
+                          ? 'bg-accent/10 text-accent'
+                          : 'bg-muted text-muted-foreground'
+                      }`}>
+                        {analysis.analysis_type === 'ADVANCED' ? 'FTA' : 'RCA'}
+                      </span>
+                      <span className={`text-xs px-2 py-1 rounded-full ${
+                        analysis.status === 'draft'
+                          ? 'bg-warning/10 text-warning'
+                          : analysis.status === 'active'
+                          ? 'bg-primary/10 text-primary'
+                          : 'bg-success/10 text-success'
+                      }`}>
+                        {analysis.status}
+                      </span>
+                    </div>
                   </div>
                   {(analysis.model || analysis.part_name) && (
                     <CardDescription className="line-clamp-1">
@@ -322,29 +337,83 @@ export default function AnalysesPage() {
       )}
 
       {/* New Analysis Dialog */}
-      <Dialog open={newDialogOpen} onOpenChange={setNewDialogOpen}>
-        <DialogContent>
+      <Dialog open={newDialogOpen} onOpenChange={(open) => {
+        setNewDialogOpen(open)
+        if (!open) {
+          setNewTitle('')
+          setNewAnalysisType('SIMPLE')
+        }
+      }}>
+        <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle>Create New Analysis</DialogTitle>
             <DialogDescription>
-              Give your fault tree analysis a name to get started.
+              Choose an analysis type and give it a name to get started.
             </DialogDescription>
           </DialogHeader>
-          <div className="py-4">
-            <Label htmlFor="title">Analysis Name</Label>
-            <Input
-              id="title"
-              value={newTitle}
-              onChange={(e) => setNewTitle(e.target.value)}
-              placeholder="e.g., Engine Failure Investigation"
-              className="mt-2"
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && newTitle.trim()) {
-                  createNewAnalysis()
-                }
-              }}
-              autoFocus
-            />
+          <div className="py-4 space-y-6">
+            {/* Analysis Type Selection */}
+            <div className="space-y-3">
+              <Label>Analysis Type</Label>
+              <div className="grid grid-cols-2 gap-3">
+                {/* Simple RCA Card */}
+                <button
+                  type="button"
+                  onClick={() => setNewAnalysisType('SIMPLE')}
+                  className={`relative flex flex-col items-start p-4 rounded-lg border-2 text-left transition-all ${
+                    newAnalysisType === 'SIMPLE'
+                      ? 'border-primary bg-primary/5'
+                      : 'border-muted hover:border-muted-foreground/50'
+                  }`}
+                >
+                  {newAnalysisType === 'SIMPLE' && (
+                    <CheckCircle2 className="absolute top-2 right-2 h-5 w-5 text-primary" />
+                  )}
+                  <List className="h-8 w-8 text-primary mb-2" />
+                  <span className="font-medium">Simple RCA</span>
+                  <span className="text-xs text-muted-foreground mt-1">
+                    5-Why analysis, linear chains, facilitator-friendly
+                  </span>
+                </button>
+
+                {/* Advanced FTA Card */}
+                <button
+                  type="button"
+                  onClick={() => setNewAnalysisType('ADVANCED')}
+                  className={`relative flex flex-col items-start p-4 rounded-lg border-2 text-left transition-all ${
+                    newAnalysisType === 'ADVANCED'
+                      ? 'border-primary bg-primary/5'
+                      : 'border-muted hover:border-muted-foreground/50'
+                  }`}
+                >
+                  {newAnalysisType === 'ADVANCED' && (
+                    <CheckCircle2 className="absolute top-2 right-2 h-5 w-5 text-primary" />
+                  )}
+                  <GitBranch className="h-8 w-8 text-accent mb-2" />
+                  <span className="font-medium">Advanced FTA</span>
+                  <span className="text-xs text-muted-foreground mt-1">
+                    AND/OR gates, fault tree logic, expert mode
+                  </span>
+                </button>
+              </div>
+            </div>
+
+            {/* Analysis Name */}
+            <div className="space-y-2">
+              <Label htmlFor="title">Analysis Name</Label>
+              <Input
+                id="title"
+                value={newTitle}
+                onChange={(e) => setNewTitle(e.target.value)}
+                placeholder="e.g., Engine Failure Investigation"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && newTitle.trim()) {
+                    createNewAnalysis()
+                  }
+                }}
+                autoFocus
+              />
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setNewDialogOpen(false)}>

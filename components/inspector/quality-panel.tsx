@@ -53,7 +53,7 @@ export function QualityScoreBadge({
       <button
         onClick={onClick}
         className={cn(
-          'flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-muted text-muted-foreground',
+          'flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-muted text-muted-foreground shrink-0 whitespace-nowrap',
           className
         )}
       >
@@ -70,7 +70,7 @@ export function QualityScoreBadge({
     <button
       onClick={onClick}
       className={cn(
-        'flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-colors',
+        'flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-colors shrink-0 whitespace-nowrap',
         percentage >= 80
           ? 'bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-300'
           : percentage >= 50

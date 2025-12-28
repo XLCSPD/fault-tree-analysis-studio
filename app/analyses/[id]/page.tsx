@@ -36,6 +36,7 @@ import { SearchBar } from '@/components/canvas/search-bar'
 import { NodeBreadcrumb } from '@/components/canvas/node-breadcrumb'
 import { ContextMenu } from '@/components/canvas/context-menu'
 import { CanvasProvider } from '@/lib/context/canvas-context'
+import { AnalysisProvider, useAnalysisContext } from '@/lib/context/analysis-context'
 import { useHistoryStore, createNodeCommand, createEdgeCommand, createBatchMoveCommand } from '@/lib/store/history-store'
 import { useUndoRedo } from '@/lib/hooks/use-undo-redo'
 import {
@@ -60,7 +61,9 @@ import {
   Pencil,
   Check,
   X,
-  Search
+  Search,
+  Map as MapIcon,
+  MapPinOff
 } from 'lucide-react'
 import { EditableCell } from '@/components/table/editable-cell'
 import { VirtualizedTable } from '@/components/table/virtualized-table'
@@ -92,6 +95,7 @@ function FTAStudioContent({ analysisId }: { analysisId: string }) {
   const [showInspector, setShowInspector] = useState(true)
   const [showMetadata, setShowMetadata] = useState(false)
   const [showQuality, setShowQuality] = useState(false)
+  const [showMiniMap, setShowMiniMap] = useState(true)
   const [editingCell, setEditingCell] = useState<{ rowIndex: number; column: string } | null>(null)
   const [highlightedNodes, setHighlightedNodes] = useState<string[]>([])
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; nodeId: string } | null>(null)
@@ -148,6 +152,9 @@ function FTAStudioContent({ analysisId }: { analysisId: string }) {
   const { data: dbNodes, isLoading: nodesLoading } = useNodes(analysisId)
   const { data: dbEdges, isLoading: edgesLoading } = useEdges(analysisId)
   const { data: tableData, isLoading: tableLoading } = useTableProjection(analysisId)
+
+  // Analysis type - determines if gates are enabled
+  const isAdvancedMode = analysis?.analysis_type === 'ADVANCED'
 
   // Filtered table data based on search query
   const filteredTableData = useMemo(() => {
@@ -450,6 +457,7 @@ function FTAStudioContent({ analysisId }: { analysisId: string }) {
         units: updates.units,
         specification: updates.specification,
         evidence_status: updates.evidenceStatus,
+        gate_type: updates.gateType,
       },
     })
   }, [selectedNodeId, updateNodeLocal, updateNodeDb, nodes, pushCommand])
@@ -850,6 +858,7 @@ function FTAStudioContent({ analysisId }: { analysisId: string }) {
   }
 
   return (
+    <AnalysisProvider analysis={analysis} analysisId={analysisId} isLoading={isLoading}>
     <div className="h-screen flex flex-col bg-muted/30">
       {/* Header */}
       <header className="border-b bg-background px-4 py-3">
@@ -905,7 +914,7 @@ function FTAStudioContent({ analysisId }: { analysisId: string }) {
                   <Pencil className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
                 </button>
               )}
-              <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide max-w-[60vw] md:max-w-none">
                 <MetadataChips
                   analysis={analysis ?? null}
                   onClick={() => setShowMetadata(true)}
@@ -915,7 +924,7 @@ function FTAStudioContent({ analysisId }: { analysisId: string }) {
                   onClick={() => setShowQuality(true)}
                 />
                 {analysis?.status && (
-                  <span className={`px-2 py-0.5 text-xs rounded-full ${
+                  <span className={`px-2 py-0.5 text-xs rounded-full whitespace-nowrap ${
                     analysis.status === 'draft' ? 'bg-yellow-100 text-yellow-800' :
                     analysis.status === 'active' ? 'bg-blue-100 text-blue-800' :
                     'bg-green-100 text-green-800'
@@ -1065,17 +1074,32 @@ function FTAStudioContent({ analysisId }: { analysisId: string }) {
           >
             <Background />
             <Controls />
-            <MiniMap
-              className="bg-background border rounded-lg"
-              nodeColor={(n) => {
-                const data = n.data as FaultTreeNodeData
-                if (highlightedNodes.includes(n.id)) return '#facc15' // Yellow for highlighted
-                if (data.nodeType === 'top_event') return '#ef4444'
-                if (data.nodeType === 'intermediate_event') return '#3b82f6'
-                return '#22c55e'
-              }}
-            />
+            {showMiniMap && (
+              <MiniMap
+                className="bg-background border rounded-lg"
+                nodeColor={(n) => {
+                  const data = n.data as FaultTreeNodeData
+                  if (highlightedNodes.includes(n.id)) return '#facc15' // Yellow for highlighted
+                  if (data.nodeType === 'top_event') return '#ef4444'
+                  if (data.nodeType === 'intermediate_event') return '#3b82f6'
+                  return '#22c55e'
+                }}
+              />
+            )}
           </ReactFlow>
+
+          {/* MiniMap Toggle Button */}
+          <Button
+            variant="outline"
+            size="icon"
+            className={`absolute bottom-4 h-8 w-8 bg-background/80 backdrop-blur-sm shadow-md z-10 ${
+              showMiniMap ? 'right-[180px]' : 'right-4'
+            }`}
+            onClick={() => setShowMiniMap(!showMiniMap)}
+            title={showMiniMap ? 'Hide minimap' : 'Show minimap'}
+          >
+            {showMiniMap ? <MapPinOff className="h-4 w-4" /> : <MapIcon className="h-4 w-4" />}
+          </Button>
 
           {/* Toolbar */}
           <div className="absolute top-4 left-4 flex flex-col gap-2">
@@ -1256,9 +1280,34 @@ function FTAStudioContent({ analysisId }: { analysisId: string }) {
                         <option value="top_event">Top Event</option>
                         <option value="intermediate_event">Intermediate Event</option>
                         <option value="basic_event">Basic Event</option>
-                        <option value="gate">Gate</option>
+                        {isAdvancedMode && <option value="gate">Gate</option>}
                       </select>
                     </div>
+                    {/* Gate Type selector - only shown in Advanced mode for gate nodes */}
+                    {isAdvancedMode && selectedNode.data.nodeType === 'gate' && (
+                      <div>
+                        <Label htmlFor="gateType">Gate Type</Label>
+                        <select
+                          id="gateType"
+                          className="w-full mt-1 px-3 py-2 border rounded-md bg-background"
+                          value={selectedNode.data.gateType || ''}
+                          onChange={(e) => handleUpdateSelectedNode({
+                            gateType: e.target.value as 'AND' | 'OR' | null || null
+                          })}
+                        >
+                          <option value="">Select gate type</option>
+                          <option value="AND">AND Gate</option>
+                          <option value="OR">OR Gate</option>
+                        </select>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {selectedNode.data.gateType === 'AND'
+                            ? 'All child events must occur for this event to occur'
+                            : selectedNode.data.gateType === 'OR'
+                            ? 'Any child event can cause this event to occur'
+                            : 'Select how child events combine'}
+                        </p>
+                      </div>
+                    )}
                     <div>
                       <Label htmlFor="units">Units</Label>
                       <Input
@@ -1414,6 +1463,7 @@ function FTAStudioContent({ analysisId }: { analysisId: string }) {
         )}
       </div>
     </div>
+    </AnalysisProvider>
   )
 }
 

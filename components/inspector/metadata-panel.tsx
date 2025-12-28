@@ -23,7 +23,19 @@ import {
   FileText,
   Calendar,
   CheckCircle2,
+  GitBranch,
+  List,
 } from 'lucide-react'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { useAnalysis, useUpdateAnalysis } from '@/lib/hooks/use-analysis'
 import { MetadataAIAssist } from './metadata-ai-assist'
 import { useUser } from '@/lib/hooks/use-user'
@@ -42,6 +54,7 @@ import type { Database } from '@/types/database'
 type Analysis = Database['public']['Tables']['analyses']['Row']
 type AnalysisUpdate = Database['public']['Tables']['analyses']['Update']
 type IssueCategory = Database['public']['Tables']['issue_categories']['Row']
+type AnalysisType = Database['public']['Enums']['analysis_type']
 
 interface MetadataPanelProps {
   analysisId: string
@@ -220,6 +233,10 @@ export function MetadataPanel({ analysisId, onClose }: MetadataPanelProps) {
   const [hasChanges, setHasChanges] = useState(false)
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
 
+  // Analysis type switching
+  const [showTypeChangeConfirm, setShowTypeChangeConfirm] = useState(false)
+  const [pendingTypeChange, setPendingTypeChange] = useState<AnalysisType | null>(null)
+
   // Find "Other (Specify)" category ID
   const otherCategoryId = useMemo(() => {
     return issueCategories?.find(c => c.name === 'Other (Specify)')?.id || null
@@ -277,6 +294,7 @@ export function MetadataPanel({ analysisId, onClose }: MetadataPanelProps) {
         item_output: analysis.item_output ?? analysis.part_name ?? null,
         issue_category_id: analysis.issue_category_id ?? null,
         issue_subcategory: analysis.issue_subcategory ?? null,
+        analysis_type: analysis.analysis_type,
       })
       setHasChanges(false)
       setSaveStatus('idle')
@@ -335,6 +353,26 @@ export function MetadataPanel({ analysisId, onClose }: MetadataPanelProps) {
     setHasChanges(false)
     setSaveStatus('idle')
   }, [])
+
+  // Handle analysis type change with confirmation for downgrade
+  const handleTypeChange = useCallback((newType: AnalysisType) => {
+    // If switching from ADVANCED to SIMPLE, show confirmation
+    if (formData.analysis_type === 'ADVANCED' && newType === 'SIMPLE') {
+      setPendingTypeChange(newType)
+      setShowTypeChangeConfirm(true)
+    } else {
+      handleChange('analysis_type', newType)
+    }
+  }, [formData.analysis_type, handleChange])
+
+  // Confirm type change
+  const confirmTypeChange = useCallback(() => {
+    if (pendingTypeChange) {
+      handleChange('analysis_type', pendingTypeChange)
+      setPendingTypeChange(null)
+      setShowTypeChangeConfirm(false)
+    }
+  }, [pendingTypeChange, handleChange])
 
   if (isLoading) {
     return (
@@ -415,6 +453,33 @@ export function MetadataPanel({ analysisId, onClose }: MetadataPanelProps) {
                   label="Title"
                   value={analysis?.title}
                 />
+                <div className="flex items-start gap-3 py-2">
+                  <div className="mt-0.5 text-muted-foreground">
+                    {analysis?.analysis_type === 'ADVANCED' ? (
+                      <GitBranch className="w-4 h-4" />
+                    ) : (
+                      <List className="w-4 h-4" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs text-muted-foreground">Analysis Type</div>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className={cn(
+                        "text-xs px-2 py-0.5 rounded-full",
+                        analysis?.analysis_type === 'ADVANCED'
+                          ? 'bg-accent/10 text-accent'
+                          : 'bg-primary/10 text-primary'
+                      )}>
+                        {analysis?.analysis_type === 'ADVANCED' ? 'Advanced FTA' : 'Simple RCA'}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {analysis?.analysis_type === 'ADVANCED'
+                          ? 'AND/OR gate logic enabled'
+                          : '5-Why linear analysis'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
                 <ViewField
                   icon={<Tag className="w-4 h-4" />}
                   label="Status"
@@ -584,6 +649,51 @@ export function MetadataPanel({ analysisId, onClose }: MetadataPanelProps) {
                   <option value="active">Active</option>
                   <option value="completed">Completed</option>
                 </select>
+              </div>
+
+              {/* Analysis Type */}
+              <div>
+                <Label>Analysis Type</Label>
+                <div className="grid grid-cols-2 gap-2 mt-1">
+                  <button
+                    type="button"
+                    onClick={() => handleTypeChange('SIMPLE')}
+                    className={cn(
+                      'flex items-center gap-2 p-3 rounded-lg border-2 text-left transition-all',
+                      formData.analysis_type === 'SIMPLE'
+                        ? 'border-primary bg-primary/5'
+                        : 'border-muted hover:border-muted-foreground/50'
+                    )}
+                  >
+                    <List className="w-5 h-5 text-primary shrink-0" />
+                    <div>
+                      <div className="text-sm font-medium">Simple RCA</div>
+                      <div className="text-xs text-muted-foreground">5-Why chains</div>
+                    </div>
+                    {formData.analysis_type === 'SIMPLE' && (
+                      <CheckCircle2 className="w-4 h-4 text-primary ml-auto" />
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleTypeChange('ADVANCED')}
+                    className={cn(
+                      'flex items-center gap-2 p-3 rounded-lg border-2 text-left transition-all',
+                      formData.analysis_type === 'ADVANCED'
+                        ? 'border-accent bg-accent/5'
+                        : 'border-muted hover:border-muted-foreground/50'
+                    )}
+                  >
+                    <GitBranch className="w-5 h-5 text-accent shrink-0" />
+                    <div>
+                      <div className="text-sm font-medium">Advanced FTA</div>
+                      <div className="text-xs text-muted-foreground">AND/OR gates</div>
+                    </div>
+                    {formData.analysis_type === 'ADVANCED' && (
+                      <CheckCircle2 className="w-4 h-4 text-accent ml-auto" />
+                    )}
+                  </button>
+                </div>
               </div>
 
               {/* Analysis Date */}
@@ -851,6 +961,36 @@ export function MetadataPanel({ analysisId, onClose }: MetadataPanelProps) {
           </Button>
         </div>
       )}
+
+      {/* Type Change Confirmation Dialog */}
+      <AlertDialog open={showTypeChangeConfirm} onOpenChange={setShowTypeChangeConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-warning" />
+              Switch to Simple RCA Mode?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <p>
+                Switching to Simple RCA mode will hide any existing gate logic
+                (AND/OR nodes) in this analysis.
+              </p>
+              <p className="text-muted-foreground">
+                Gate nodes will be preserved but hidden. You can switch back to
+                Advanced FTA mode at any time to restore gate visibility.
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setPendingTypeChange(null)}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={confirmTypeChange}>
+              Switch to Simple
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
